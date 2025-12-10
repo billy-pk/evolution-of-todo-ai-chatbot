@@ -5,7 +5,7 @@ Evolution of Todo – Phase 3: AI-Powered Chatbot
 
 This Constitution defines the mission, boundaries, requirements, and architectural principles for Phase 3 of the Evolution of Todo project.
 
-Phase 3 builds on the completed implementation from Phase 2, preserving all working functionality while adding an AI-powered natural-language interface using:
+Phase 3 builds on the completed implementation from previous phase namely Phase 2, preserving all working functionality while adding an AI-powered natural-language interface using:
 
 - OpenAI ChatKit
 - OpenAI Agents SDK
@@ -71,7 +71,7 @@ Phase 3 introduces an AI-powered conversational interface that enhances the todo
 
 ### 3.2 New Components Introduced
 
-- Chat UI using ChatKit (Next.js)
+- Chat UI using OpenAI ChatKit 
 - Chat API endpoint (FastAPI)
 - OpenAI Agent configuration
 - MCP server with tools:
@@ -118,7 +118,7 @@ Phase 3 introduces an AI-powered conversational interface that enhances the todo
 
 ### 4.5 Extensibility
 
-- Architecture must smoothly support Phase 4 (Kubernetes) and Phase 5 (Cloud-native scaling)
+- Architecture must smoothly support next Phase 4 (Kubernetes) and Phase 5 (Cloud-native scaling)
 - No hard-coded secrets or hostnames
 
 ---

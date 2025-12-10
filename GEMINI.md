@@ -196,28 +196,15 @@ If ALL true, suggest:
 
 Wait for consent; never auto-create ADRs. Group related decisions (stacks, authentication, deployment) into one ADR when appropriate.
 
-## Project Overview
+## Basic Project Structure
 
-This project is a full-stack web application with a Python backend and a React-based frontend.
+- `.specify/memory/constitution.md` — Project principles
+- `specs/<feature>/spec.md` — Feature requirements
+- `specs/<feature>/plan.md` — Architecture decisions
+- `specs/<feature>/tasks.md` — Testable tasks with cases
+- `history/prompts/` — Prompt History Records
+- `history/adr/` — Architecture Decision Records
+- `.specify/` — SpecKit Plus templates and scripts
 
-### Backend
-
-*   **Framework:** FastAPI
-*   **Database:** PostgreSQL (using `psycopg2-binary`)
-*   **ORM:** SQLModel
-*   **Authentication:** JWT-based using `pyjwt` and `python-jose`.
-*   **Testing:** `pytest`
-*   **Linting & Formatting:** `ruff`, `black`, `mypy`
-*   **Directory:** `backend/`
-
-### Frontend
-
-*   **Framework:** Next.js (React)
-*   **Language:** TypeScript
-*   **Styling:** Tailwind CSS
-*   **Testing:** Jest
-*   **Linting:** ESLint
-*   **Directory:** `frontend/`
-
-### Code Standards
+## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
