@@ -25,11 +25,11 @@ This is a **web application** with:
 
 **Purpose**: Environment setup and dependency installation
 
-- [ ] T001 Add OPENAI_API_KEY and related config to backend/.env per quickstart.md
-- [ ] T002 [P] Install OpenAI Agents SDK in backend: `uv add openai-agents`
-- [ ] T003 [P] Install MCP SDK in backend: `uv add mcp`
-- [ ] T004 [P] Install OpenAI ChatKit in frontend: `npm install @openai/chatkit-react`
-- [ ] T005 Update backend/config.py to add OPENAI_API_KEY, OPENAI_MODEL, OPENAI_API_TIMEOUT, RATE_LIMIT_REQUESTS_PER_HOUR, MCP_SERVER_URL settings
+- [x] T001 Add OPENAI_API_KEY and related config to backend/.env per quickstart.md
+- [x] T002 [P] Install OpenAI Agents SDK in backend: `uv add openai-agents`
+- [x] T003 [P] Install MCP SDK in backend: `uv add mcp`
+- [x] T004 [P] Install OpenAI ChatKit in frontend: `npm install @openai/chatkit-react`
+- [x] T005 Update backend/config.py to add OPENAI_API_KEY, OPENAI_MODEL, OPENAI_API_TIMEOUT, RATE_LIMIT_REQUESTS_PER_HOUR, MCP_SERVER_URL settings
 
 **Checkpoint**: Dependencies installed, environment configured
 
@@ -41,17 +41,17 @@ This is a **web application** with:
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Add Conversation model to backend/models.py per data-model.md (lines 115-123)
-- [ ] T007 Add Message model to backend/models.py per data-model.md (lines 177-193)
-- [ ] T008 Create database migration script backend/scripts/migrate_conversations.py per data-model.md (lines 256-274)
-- [ ] T009 Run migration to create conversations and messages tables
-- [ ] T010 Verify tables created with test connection script per quickstart.md
-- [ ] T011 Add ChatRequest schema to backend/schemas.py (message: str, conversation_id: Optional[UUID])
-- [ ] T012 Add ChatResponse schema to backend/schemas.py (conversation_id: UUID, response: str, tool_calls: List, messages: List, metadata: dict)
-- [ ] T013 [P] Create backend/mcp/__init__.py (empty init file)
-- [ ] T014 [P] Create backend/services/__init__.py (empty init file)
+- [x] T006 Add Conversation model to backend/models.py per data-model.md (lines 115-123)
+- [x] T007 Add Message model to backend/models.py per data-model.md (lines 177-193)
+- [x] T008 Create database migration script backend/scripts/migrate_conversations.py per data-model.md (lines 256-274)
+- [x] T009 Run migration to create conversations and messages tables
+- [x] T010 Verify tables created with test connection script per quickstart.md
+- [x] T011 Add ChatRequest schema to backend/schemas.py (message: str, conversation_id: Optional[UUID])
+- [x] T012 Add ChatResponse schema to backend/schemas.py (conversation_id: UUID, response: str, tool_calls: List, messages: List, metadata: dict)
+- [x] T013 [P] Create backend/mcp/__init__.py (empty init file)
+- [x] T014 [P] Create backend/services/__init__.py (empty init file)
 
-**Checkpoint**: Foundation ready - database tables exist, schemas defined, user story implementation can now begin in parallel
+**Checkpoint**: Foundation ready - database tables exist, schemas defined, user story implementation can now begin in parallel ✅
 
 ---
 
