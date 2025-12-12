@@ -2,13 +2,15 @@
 
 **Feature**: 001-ai-chatbot
 **Date**: 2025-12-12
-**Status**: Design Complete
+**Status**: Design Complete (Correct MCP Server Architecture)
 
 ---
 
 ## Overview
 
-MCP (Model Context Protocol) tools are standardized interfaces that allow the AI agent to perform task operations. All tools enforce user isolation and verify task ownership before executing operations.
+MCP tools are standardized interfaces exposed by an MCP server (using FastMCP from official MCP Python SDK) that allow the AI agent to perform task operations. The OpenAI Agent connects to the MCP server via MCPServerStreamableHttp. All tools enforce user isolation and verify task ownership before executing operations.
+
+**Architecture Note**: This design uses a **separate MCP server** built with FastMCP that exposes tools via HTTP transport. The OpenAI Agent connects to this server using the OpenAI Agents SDK's MCP integration (`MCPServerStreamableHttp`).
 
 ---
 
@@ -49,27 +51,32 @@ Create a new task for the user.
 | title       | string | Yes      | 1-200 characters     | Task title                   |
 | description | string | No       | Max 1000 characters  | Optional task description    |
 
-### Pydantic Schema
-```python
-from pydantic import BaseModel, Field
-
-class AddTaskParams(BaseModel):
-    user_id: str = Field(..., min_length=1, max_length=255, description="User ID from JWT token")
-    title: str = Field(..., min_length=1, max_length=200, description="Task title (required)")
-    description: str | None = Field(None, max_length=1000, description="Optional task description")
-```
-
 ### MCP Tool Definition
 ```python
-from mcp import Tool
+from mcp.server.fastmcp import FastMCP
+from backend.models import Task
+from backend.db import engine
+from sqlmodel import Session
 
-add_task_tool = Tool(
-    name="add_task",
-    description="Create a new task for the user. Returns the created task with its ID.",
-    parameters=AddTaskParams,
-    function=add_task_handler
-)
+mcp = FastMCP("TaskMCPServer", stateless_http=True, json_response=True)
+
+@mcp.tool()
+def add_task(user_id: str, title: str, description: str = None) -> dict:
+    """Create a new task for the user. Returns the created task with its ID.
+
+    Args:
+        user_id: User ID from JWT token (1-255 characters)
+        title: Task title (required, 1-200 characters)
+        description: Optional task description (max 1000 characters)
+
+    Returns:
+        Dict with status and task data
+    """
+    # Implementation provided in implementation pattern section below
+    pass
 ```
+
+**Note**: FastMCP automatically generates JSON schema from Python type hints. The docstring provides tool description to the AI agent.
 
 ### Success Response
 ```json
@@ -113,7 +120,25 @@ add_task_tool = Tool(
 
 ### Implementation Pattern
 ```python
-async def add_task_handler(user_id: str, title: str, description: str | None = None) -> dict:
+from mcp.server.fastmcp import FastMCP
+from backend.models import Task
+from backend.db import engine
+from sqlmodel import Session
+
+mcp = FastMCP("TaskMCPServer", stateless_http=True, json_response=True)
+
+@mcp.tool()
+def add_task(user_id: str, title: str, description: str = None) -> dict:
+    """Create a new task for the user. Returns the created task with its ID.
+
+    Args:
+        user_id: User ID from JWT token (1-255 characters)
+        title: Task title (required, 1-200 characters)
+        description: Optional task description (max 1000 characters)
+
+    Returns:
+        Dict with status and task data
+    """
     with Session(engine) as session:
         task = Task(
             user_id=user_id,
@@ -632,52 +657,93 @@ async def delete_task_handler(user_id: str, task_id: str) -> dict:
 ### MCP Server Setup
 ```python
 # backend/mcp/server.py
-from mcp import MCPServer
-from backend.mcp.tools import (
-    add_task_tool,
-    list_tasks_tool,
-    update_task_tool,
-    complete_task_tool,
-    delete_task_tool
-)
+from mcp.server.fastmcp import FastMCP
+from backend.models import Task
+from backend.db import engine
+from sqlmodel import Session, select
 
-mcp_server = MCPServer(name="TaskMCPServer")
+# Create MCP server with stateless HTTP configuration
+mcp = FastMCP("TaskMCPServer", stateless_http=True, json_response=True)
 
-# Register all tools
-mcp_server.register_tool(add_task_tool)
-mcp_server.register_tool(list_tasks_tool)
-mcp_server.register_tool(update_task_tool)
-mcp_server.register_tool(complete_task_tool)
-mcp_server.register_tool(delete_task_tool)
+@mcp.tool()
+def add_task(user_id: str, title: str, description: str = None) -> dict:
+    """Create a new task for the user. Returns the created task with its ID."""
+    # Implementation as shown in Tool 1 section
+    pass
+
+@mcp.tool()
+def list_tasks(user_id: str, status: str = "all") -> dict:
+    """List user's tasks. Filter by status: all, pending, or completed."""
+    # Implementation as shown in Tool 2 section
+    pass
+
+@mcp.tool()
+def update_task(user_id: str, task_id: str, title: str = None, description: str = None) -> dict:
+    """Update task title or description."""
+    # Implementation as shown in Tool 3 section
+    pass
+
+@mcp.tool()
+def complete_task(user_id: str, task_id: str) -> dict:
+    """Mark a task as completed."""
+    # Implementation as shown in Tool 4 section
+    pass
+
+@mcp.tool()
+def delete_task(user_id: str, task_id: str) -> dict:
+    """Delete a task permanently."""
+    # Implementation as shown in Tool 5 section
+    pass
+
+# Run MCP server with streamable-http transport
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
+    # Server runs at http://localhost:8000/mcp
 ```
 
 ### Agent Integration
 ```python
 # backend/services/agent.py
-from openai import OpenAI
-from openai.agents import Agent
-from backend.mcp.server import mcp_server
+from agents import Agent, Runner
+from agents.mcp import MCPServerStreamableHttp
+from backend.config import settings
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+async def create_agent_with_mcp():
+    """Create agent connected to MCP server."""
+    async with MCPServerStreamableHttp(
+        name="Task MCP Server",
+        params={
+            "url": "http://localhost:8000/mcp",
+            "timeout": 10,
+        },
+        cache_tools_list=True,
+    ) as server:
+        agent = Agent(
+            name="TaskAssistant",
+            instructions="""You are a helpful assistant that manages todo tasks for users.
 
-agent = Agent(
-    name="TaskAssistant",
-    instructions="""You are a helpful assistant that manages todo tasks for users.
+            You can:
+            - Create new tasks (add_task)
+            - List tasks (list_tasks) with filters (all, pending, completed)
+            - Update task titles and descriptions (update_task)
+            - Mark tasks as complete (complete_task)
+            - Delete tasks (delete_task)
 
-    You can:
-    - Create new tasks (add_task)
-    - List tasks (list_tasks) with filters (all, pending, completed)
-    - Update task titles and descriptions (update_task)
-    - Mark tasks as complete (complete_task)
-    - Delete tasks (delete_task)
+            Always confirm operations to the user in a friendly, conversational tone.
+            When listing tasks, present them in a clear, numbered format.
+            If a user's request is ambiguous (e.g., "delete task" without specifying which one), ask for clarification.
+            """,
+            mcp_servers=[server],
+            model="gpt-4o"
+        )
 
-    Always confirm operations to the user in a friendly, conversational tone.
-    When listing tasks, present them in a clear, numbered format.
-    If a user's request is ambiguous (e.g., "delete task" without specifying which one), ask for clarification.
-    """,
-    tools=mcp_server.get_tools(),  # Get all registered MCP tools
-    model="gpt-4o"
-)
+        yield agent, server
+
+# Usage in chat endpoint
+async with create_agent_with_mcp() as (agent, server):
+    result = await Runner.run(agent, user_message)
+    return result.final_output
+
 ```
 
 ---

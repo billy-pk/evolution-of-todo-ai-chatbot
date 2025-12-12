@@ -26,10 +26,10 @@ This is a **web application** with:
 **Purpose**: Environment setup and dependency installation
 
 - [ ] T001 Add OPENAI_API_KEY and related config to backend/.env per quickstart.md
-- [ ] T002 [P] Install OpenAI SDK in backend: `uv pip install openai`
-- [ ] T003 [P] Install MCP SDK in backend: `uv pip install mcp`
-- [ ] T004 [P] Install OpenAI ChatKit in frontend: `npm install @openai/chatkit`
-- [ ] T005 Update backend/config.py to add OPENAI_API_KEY, OPENAI_MODEL, OPENAI_API_TIMEOUT, RATE_LIMIT_REQUESTS_PER_HOUR settings
+- [ ] T002 [P] Install OpenAI Agents SDK in backend: `uv add openai-agents`
+- [ ] T003 [P] Install MCP SDK in backend: `uv add mcp`
+- [ ] T004 [P] Install OpenAI ChatKit in frontend: `npm install @openai/chatkit-react`
+- [ ] T005 Update backend/config.py to add OPENAI_API_KEY, OPENAI_MODEL, OPENAI_API_TIMEOUT, RATE_LIMIT_REQUESTS_PER_HOUR, MCP_SERVER_URL settings
 
 **Checkpoint**: Dependencies installed, environment configured
 
@@ -48,6 +48,8 @@ This is a **web application** with:
 - [ ] T010 Verify tables created with test connection script per quickstart.md
 - [ ] T011 Add ChatRequest schema to backend/schemas.py (message: str, conversation_id: Optional[UUID])
 - [ ] T012 Add ChatResponse schema to backend/schemas.py (conversation_id: UUID, response: str, tool_calls: List, messages: List, metadata: dict)
+- [ ] T013 [P] Create backend/mcp/__init__.py (empty init file)
+- [ ] T014 [P] Create backend/services/__init__.py (empty init file)
 
 **Checkpoint**: Foundation ready - database tables exist, schemas defined, user story implementation can now begin in parallel
 
@@ -65,23 +67,20 @@ This is a **web application** with:
 
 > **CRITICAL**: Write these tests FIRST, ensure they FAIL, then implement to make them PASS
 
-- [ ] T013 [P] [US1] Write unit test for add_task MCP tool in backend/tests/test_mcp_tools.py::test_add_task_creates_task
-- [ ] T014 [P] [US1] Write unit test for add_task with description in backend/tests/test_mcp_tools.py::test_add_task_with_description
-- [ ] T015 [P] [US1] Write unit test for add_task validation errors in backend/tests/test_mcp_tools.py::test_add_task_validation_errors
-- [ ] T016 [P] [US1] Run pytest - confirm T013-T015 FAIL (Red phase)
+- [ ] T015 [P] [US1] Write unit test for add_task MCP tool in backend/tests/test_mcp_tools.py::test_add_task_creates_task
+- [ ] T016 [P] [US1] Write unit test for add_task with description in backend/tests/test_mcp_tools.py::test_add_task_with_description
+- [ ] T017 [P] [US1] Write unit test for add_task validation errors in backend/tests/test_mcp_tools.py::test_add_task_validation_errors
+- [ ] T018 [P] [US1] Run pytest - confirm T015-T017 FAIL (Red phase)
 
 ### Implementation for User Story 1
 
-- [ ] T017 [P] [US1] Create backend/mcp/__init__.py (empty init file)
-- [ ] T018 [US1] Create AddTaskParams Pydantic schema in backend/mcp/tools.py per contracts/mcp-tools.md (lines 56-60)
-- [ ] T019 [US1] Implement add_task_handler function in backend/mcp/tools.py per contracts/mcp-tools.md implementation pattern
-- [ ] T020 [US1] Create add_task_tool definition in backend/mcp/tools.py per contracts/mcp-tools.md (lines 66-72)
+- [ ] T019 [US1] Create backend/mcp/server.py with FastMCP server initialization (from mcp.server.fastmcp import FastMCP, stateless_http=True, json_response=True)
+- [ ] T020 [US1] Implement add_task tool using @mcp.tool() decorator in backend/mcp/server.py (accepts user_id, title, description; returns dict with status/data per contracts/mcp-tools.md)
 - [ ] T021 [US1] Run pytest backend/tests/test_mcp_tools.py::test_add_task* - confirm tests PASS (Green phase)
-- [ ] T022 [P] [US1] Create backend/mcp/server.py and register add_task_tool per contracts/mcp-tools.md (lines 548-560)
-- [ ] T023 [P] [US1] Create backend/services/agent.py with OpenAI Agent initialization per research.md Agent Integration pattern
-- [ ] T024 [US1] Configure agent with add_task_tool in backend/services/agent.py
+- [ ] T022 [P] [US1] Create backend/services/agent.py with OpenAI Agent initialization and MCPServerStreamableHttp integration per contracts/mcp-tools.md
+- [ ] T023 [US1] Add MCP server startup script/command to run `python backend/mcp/server.py` (runs at http://localhost:8000/mcp)
 
-**Checkpoint**: add_task MCP tool implemented and tested (US1 core functionality ready)
+**Checkpoint**: add_task MCP tool implemented and tested, MCP server runnable (US1 core functionality ready)
 
 ---
 
@@ -95,20 +94,16 @@ This is a **web application** with:
 
 ### Tests for User Story 2 (TDD - Write FIRST) ⚠️
 
-- [ ] T025 [P] [US2] Write unit test for list_tasks MCP tool in backend/tests/test_mcp_tools.py::test_list_tasks_all
-- [ ] T026 [P] [US2] Write unit test for list_tasks with pending filter in backend/tests/test_mcp_tools.py::test_list_tasks_pending
-- [ ] T027 [P] [US2] Write unit test for list_tasks with completed filter in backend/tests/test_mcp_tools.py::test_list_tasks_completed
-- [ ] T028 [P] [US2] Write unit test for list_tasks user isolation in backend/tests/test_mcp_tools.py::test_list_tasks_filters_by_user
-- [ ] T029 [P] [US2] Run pytest - confirm T025-T028 FAIL (Red phase)
+- [ ] T024 [P] [US2] Write unit test for list_tasks MCP tool in backend/tests/test_mcp_tools.py::test_list_tasks_all
+- [ ] T025 [P] [US2] Write unit test for list_tasks with pending filter in backend/tests/test_mcp_tools.py::test_list_tasks_pending
+- [ ] T026 [P] [US2] Write unit test for list_tasks with completed filter in backend/tests/test_mcp_tools.py::test_list_tasks_completed
+- [ ] T027 [P] [US2] Write unit test for list_tasks user isolation in backend/tests/test_mcp_tools.py::test_list_tasks_filters_by_user
+- [ ] T028 [P] [US2] Run pytest - confirm T024-T027 FAIL (Red phase)
 
 ### Implementation for User Story 2
 
-- [ ] T030 [US2] Create ListTasksParams Pydantic schema in backend/mcp/tools.py per contracts/mcp-tools.md (lines 136-145)
-- [ ] T031 [US2] Implement list_tasks_handler function in backend/mcp/tools.py per contracts/mcp-tools.md implementation pattern (lines 173-198)
-- [ ] T032 [US2] Create list_tasks_tool definition in backend/mcp/tools.py
-- [ ] T033 [US2] Register list_tasks_tool in backend/mcp/server.py
-- [ ] T034 [US2] Add list_tasks_tool to agent configuration in backend/services/agent.py
-- [ ] T035 [US2] Run pytest backend/tests/test_mcp_tools.py::test_list_tasks* - confirm tests PASS (Green phase)
+- [ ] T029 [US2] Implement list_tasks tool using @mcp.tool() decorator in backend/mcp/server.py per contracts/mcp-tools.md implementation pattern (lines 173-198)
+- [ ] T030 [US2] Run pytest backend/tests/test_mcp_tools.py::test_list_tasks* - confirm tests PASS (Green phase)
 
 **Checkpoint**: list_tasks MCP tool implemented and tested (US2 core functionality ready)
 
@@ -126,25 +121,25 @@ This is a **web application** with:
 
 ### Tests for User Story 6 (TDD - Write FIRST) ⚠️
 
-- [ ] T036 [P] [US6] Write integration test for chat endpoint creates conversation in backend/tests/test_chat_endpoint.py::test_chat_creates_conversation
-- [ ] T037 [P] [US6] Write integration test for chat endpoint loads history in backend/tests/test_chat_endpoint.py::test_chat_loads_conversation_history
-- [ ] T038 [P] [US6] Write integration test for chat endpoint requires JWT in backend/tests/test_chat_endpoint.py::test_chat_requires_jwt
-- [ ] T039 [P] [US6] Write integration test for chat endpoint user isolation in backend/tests/test_chat_endpoint.py::test_chat_conversation_ownership
-- [ ] T040 [P] [US6] Run pytest - confirm T036-T039 FAIL (Red phase)
+- [ ] T030 [P] [US6] Write integration test for chat endpoint creates conversation in backend/tests/test_chat_endpoint.py::test_chat_creates_conversation
+- [ ] T031 [P] [US6] Write integration test for chat endpoint loads history in backend/tests/test_chat_endpoint.py::test_chat_loads_conversation_history
+- [ ] T032 [P] [US6] Write integration test for chat endpoint requires JWT in backend/tests/test_chat_endpoint.py::test_chat_requires_jwt
+- [ ] T033 [P] [US6] Write integration test for chat endpoint user isolation in backend/tests/test_chat_endpoint.py::test_chat_conversation_ownership
+- [ ] T034 [P] [US6] Run pytest - confirm T030-T033 FAIL (Red phase)
 
 ### Implementation for User Story 6
 
-- [ ] T041 [US6] Create backend/routes/chat.py file
-- [ ] T042 [US6] Implement POST /api/{user_id}/chat endpoint skeleton in backend/routes/chat.py per contracts/chat-endpoint.md
-- [ ] T043 [US6] Implement JWT validation in chat endpoint (extract user_id, verify match)
-- [ ] T044 [US6] Implement conversation creation logic (if conversation_id not provided) in chat endpoint
-- [ ] T045 [US6] Implement conversation loading logic (if conversation_id provided) in chat endpoint
-- [ ] T046 [US6] Implement message history loading (last 100 messages) in chat endpoint per contracts/chat-endpoint.md (line 261)
-- [ ] T047 [US6] Implement agent call with conversation context in chat endpoint per research.md
-- [ ] T048 [US6] Implement message persistence (user + assistant messages) in atomic transaction in chat endpoint
-- [ ] T049 [US6] Implement conversation updated_at timestamp update in chat endpoint
-- [ ] T050 [US6] Add chat route to backend/main.py with JWTBearer dependency
-- [ ] T051 [US6] Run pytest backend/tests/test_chat_endpoint.py - confirm tests PASS (Green phase)
+- [ ] T035 [US6] Create backend/routes/chat.py file
+- [ ] T036 [US6] Implement POST /api/{user_id}/chat endpoint skeleton in backend/routes/chat.py per contracts/chat-endpoint.md
+- [ ] T037 [US6] Implement JWT validation in chat endpoint (extract user_id, verify match)
+- [ ] T038 [US6] Implement conversation creation logic (if conversation_id not provided) in chat endpoint
+- [ ] T039 [US6] Implement conversation loading logic (if conversation_id provided) in chat endpoint
+- [ ] T040 [US6] Implement message history loading (last 100 messages) in chat endpoint per contracts/chat-endpoint.md (line 261)
+- [ ] T041 [US6] Implement agent call with conversation context in chat endpoint per research.md
+- [ ] T042 [US6] Implement message persistence (user + assistant messages) in atomic transaction in chat endpoint
+- [ ] T043 [US6] Implement conversation updated_at timestamp update in chat endpoint
+- [ ] T044 [US6] Add chat route to backend/main.py with JWTBearer dependency
+- [ ] T045 [US6] Run pytest backend/tests/test_chat_endpoint.py - confirm tests PASS (Green phase)
 
 **Checkpoint**: Chat endpoint functional with conversation persistence (US6 complete)
 
@@ -160,19 +155,15 @@ This is a **web application** with:
 
 ### Tests for User Story 3 (TDD - Write FIRST) ⚠️
 
-- [ ] T052 [P] [US3] Write unit test for complete_task MCP tool in backend/tests/test_mcp_tools.py::test_complete_task_marks_complete
-- [ ] T053 [P] [US3] Write unit test for complete_task idempotency in backend/tests/test_mcp_tools.py::test_complete_task_idempotent
-- [ ] T054 [P] [US3] Write unit test for complete_task ownership in backend/tests/test_mcp_tools.py::test_complete_task_unauthorized
-- [ ] T055 [P] [US3] Run pytest - confirm T052-T054 FAIL (Red phase)
+- [ ] T046 [P] [US3] Write unit test for complete_task MCP tool in backend/tests/test_mcp_tools.py::test_complete_task_marks_complete
+- [ ] T047 [P] [US3] Write unit test for complete_task idempotency in backend/tests/test_mcp_tools.py::test_complete_task_idempotent
+- [ ] T048 [P] [US3] Write unit test for complete_task ownership in backend/tests/test_mcp_tools.py::test_complete_task_unauthorized
+- [ ] T049 [P] [US3] Run pytest - confirm T046-T048 FAIL (Red phase)
 
 ### Implementation for User Story 3
 
-- [ ] T056 [US3] Create CompleteTaskParams Pydantic schema in backend/mcp/tools.py per contracts/mcp-tools.md
-- [ ] T057 [US3] Implement complete_task_handler function in backend/mcp/tools.py per contracts/mcp-tools.md implementation pattern (lines 349-376)
-- [ ] T058 [US3] Create complete_task_tool definition in backend/mcp/tools.py
-- [ ] T059 [US3] Register complete_task_tool in backend/mcp/server.py
-- [ ] T060 [US3] Add complete_task_tool to agent configuration in backend/services/agent.py
-- [ ] T061 [US3] Run pytest backend/tests/test_mcp_tools.py::test_complete_task* - confirm tests PASS (Green phase)
+- [ ] T050 [US3] Implement complete_task tool using @mcp.tool() decorator in backend/mcp/server.py per contracts/mcp-tools.md implementation pattern (lines 349-376)
+- [ ] T051 [US3] Run pytest backend/tests/test_mcp_tools.py::test_complete_task* - confirm tests PASS (Green phase)
 
 **Checkpoint**: complete_task MCP tool implemented and tested (US3 complete)
 
@@ -188,20 +179,16 @@ This is a **web application** with:
 
 ### Tests for User Story 4 (TDD - Write FIRST) ⚠️
 
-- [ ] T062 [P] [US4] Write unit test for update_task title in backend/tests/test_mcp_tools.py::test_update_task_title
-- [ ] T063 [P] [US4] Write unit test for update_task description in backend/tests/test_mcp_tools.py::test_update_task_description
-- [ ] T064 [P] [US4] Write unit test for update_task both fields in backend/tests/test_mcp_tools.py::test_update_task_both
-- [ ] T065 [P] [US4] Write unit test for update_task ownership in backend/tests/test_mcp_tools.py::test_update_task_unauthorized
-- [ ] T066 [P] [US4] Run pytest - confirm T062-T065 FAIL (Red phase)
+- [ ] T052 [P] [US4] Write unit test for update_task title in backend/tests/test_mcp_tools.py::test_update_task_title
+- [ ] T053 [P] [US4] Write unit test for update_task description in backend/tests/test_mcp_tools.py::test_update_task_description
+- [ ] T054 [P] [US4] Write unit test for update_task both fields in backend/tests/test_mcp_tools.py::test_update_task_both
+- [ ] T055 [P] [US4] Write unit test for update_task ownership in backend/tests/test_mcp_tools.py::test_update_task_unauthorized
+- [ ] T056 [P] [US4] Run pytest - confirm T052-T055 FAIL (Red phase)
 
 ### Implementation for User Story 4
 
-- [ ] T067 [US4] Create UpdateTaskParams Pydantic schema in backend/mcp/tools.py per contracts/mcp-tools.md (lines 240-251)
-- [ ] T068 [US4] Implement update_task_handler function in backend/mcp/tools.py per contracts/mcp-tools.md implementation pattern (lines 283-315)
-- [ ] T069 [US4] Create update_task_tool definition in backend/mcp/tools.py
-- [ ] T070 [US4] Register update_task_tool in backend/mcp/server.py
-- [ ] T071 [US4] Add update_task_tool to agent configuration in backend/services/agent.py
-- [ ] T072 [US4] Run pytest backend/tests/test_mcp_tools.py::test_update_task* - confirm tests PASS (Green phase)
+- [ ] T057 [US4] Implement update_task tool using @mcp.tool() decorator in backend/mcp/server.py per contracts/mcp-tools.md implementation pattern (lines 283-315)
+- [ ] T058 [US4] Run pytest backend/tests/test_mcp_tools.py::test_update_task* - confirm tests PASS (Green phase)
 
 **Checkpoint**: update_task MCP tool implemented and tested (US4 complete)
 
@@ -217,19 +204,15 @@ This is a **web application** with:
 
 ### Tests for User Story 5 (TDD - Write FIRST) ⚠️
 
-- [ ] T073 [P] [US5] Write unit test for delete_task removes task in backend/tests/test_mcp_tools.py::test_delete_task_removes
-- [ ] T074 [P] [US5] Write unit test for delete_task ownership in backend/tests/test_mcp_tools.py::test_delete_task_unauthorized
-- [ ] T075 [P] [US5] Write unit test for delete_task not found in backend/tests/test_mcp_tools.py::test_delete_task_not_found
-- [ ] T076 [P] [US5] Run pytest - confirm T073-T075 FAIL (Red phase)
+- [ ] T059 [P] [US5] Write unit test for delete_task removes task in backend/tests/test_mcp_tools.py::test_delete_task_removes
+- [ ] T060 [P] [US5] Write unit test for delete_task ownership in backend/tests/test_mcp_tools.py::test_delete_task_unauthorized
+- [ ] T061 [P] [US5] Write unit test for delete_task not found in backend/tests/test_mcp_tools.py::test_delete_task_not_found
+- [ ] T062 [P] [US5] Run pytest - confirm T059-T061 FAIL (Red phase)
 
 ### Implementation for User Story 5
 
-- [ ] T077 [US5] Create DeleteTaskParams Pydantic schema in backend/mcp/tools.py per contracts/mcp-tools.md
-- [ ] T078 [US5] Implement delete_task_handler function in backend/mcp/tools.py per contracts/mcp-tools.md implementation pattern (lines 456-479)
-- [ ] T079 [US5] Create delete_task_tool definition in backend/mcp/tools.py
-- [ ] T080 [US5] Register delete_task_tool in backend/mcp/server.py
-- [ ] T081 [US5] Add delete_task_tool to agent configuration in backend/services/agent.py
-- [ ] T082 [US5] Run pytest backend/tests/test_mcp_tools.py::test_delete_task* - confirm tests PASS (Green phase)
+- [ ] T063 [US5] Implement delete_task tool using @mcp.tool() decorator in backend/mcp/server.py per contracts/mcp-tools.md implementation pattern (lines 456-479)
+- [ ] T064 [US5] Run pytest backend/tests/test_mcp_tools.py::test_delete_task* - confirm tests PASS (Green phase)
 
 **Checkpoint**: delete_task MCP tool implemented and tested (US5 complete, all 5 MCP tools functional)
 
@@ -243,22 +226,22 @@ This is a **web application** with:
 
 ### Tests for Frontend (TDD - Write FIRST) ⚠️
 
-- [ ] T083 [P] Write frontend test for chat page renders in frontend/__tests__/chat/chat-page.test.tsx
-- [ ] T084 [P] Write frontend test for message send in frontend/__tests__/chat/chat-flow.test.tsx::test_user_can_send_message
-- [ ] T085 [P] Write frontend test for loading indicator in frontend/__tests__/chat/chat-flow.test.tsx::test_shows_loading_indicator
-- [ ] T086 [P] Run npm test - confirm T083-T085 FAIL (Red phase)
+- [ ] T065 [P] Write frontend test for chat page renders in frontend/__tests__/chat/chat-page.test.tsx
+- [ ] T066 [P] Write frontend test for message send in frontend/__tests__/chat/chat-flow.test.tsx::test_user_can_send_message
+- [ ] T067 [P] Write frontend test for loading indicator in frontend/__tests__/chat/chat-flow.test.tsx::test_shows_loading_indicator
+- [ ] T068 [P] Run npm test - confirm T065-T067 FAIL (Red phase)
 
 ### Frontend Implementation
 
-- [ ] T087 [P] Create frontend/src/app/chat/page.tsx with ChatKit UI skeleton per research.md ChatKit integration pattern
-- [ ] T088 [P] Add chat API client function to frontend/src/lib/api.ts (POST /api/{user_id}/chat with JWT header)
-- [ ] T089 Update frontend/src/app/layout.tsx to add "Chat" navigation link
-- [ ] T090 Implement message input and send functionality in frontend/src/app/chat/page.tsx
-- [ ] T091 Implement message history display (user right-aligned, assistant left-aligned) in frontend/src/app/chat/page.tsx per FR-006
-- [ ] T092 Implement loading indicator with "thinking" status in frontend/src/app/chat/page.tsx per FR-048
-- [ ] T093 Implement "New Conversation" button in frontend/src/app/chat/page.tsx per FR-005
-- [ ] T094 Add error handling for 401/403/404/429/500 responses in frontend/src/app/chat/page.tsx per FR-045
-- [ ] T095 Run npm test frontend/__tests__/chat/ - confirm tests PASS (Green phase)
+- [ ] T069 [P] Create frontend/src/app/chat/page.tsx with ChatKit UI skeleton per research.md ChatKit integration pattern
+- [ ] T070 [P] Add chat API client function to frontend/src/lib/api.ts (POST /api/{user_id}/chat with JWT header)
+- [ ] T071 Update frontend/src/app/layout.tsx to add "Chat" navigation link
+- [ ] T072 Implement message input and send functionality in frontend/src/app/chat/page.tsx
+- [ ] T073 Implement message history display (user right-aligned, assistant left-aligned) in frontend/src/app/chat/page.tsx per FR-006
+- [ ] T074 Implement loading indicator with "thinking" status in frontend/src/app/chat/page.tsx per FR-048
+- [ ] T075 Implement "New Conversation" button in frontend/src/app/chat/page.tsx per FR-005
+- [ ] T076 Add error handling for 401/403/404/429/500 responses in frontend/src/app/chat/page.tsx per FR-045
+- [ ] T077 Run npm test frontend/__tests__/chat/ - confirm tests PASS (Green phase)
 
 **Checkpoint**: Chat UI complete and functional
 
@@ -268,17 +251,17 @@ This is a **web application** with:
 
 **Purpose**: Verify all user stories work together and independently
 
-- [ ] T096 [P] Write E2E test for US1 (create task via chat) in backend/tests/test_integration.py::test_e2e_create_task_via_chat
-- [ ] T097 [P] Write E2E test for US2 (list tasks via chat) in backend/tests/test_integration.py::test_e2e_list_tasks_via_chat
-- [ ] T098 [P] Write E2E test for US3 (complete task via chat) in backend/tests/test_integration.py::test_e2e_complete_task_via_chat
-- [ ] T099 [P] Write E2E test for US4 (update task via chat) in backend/tests/test_integration.py::test_e2e_update_task_via_chat
-- [ ] T100 [P] Write E2E test for US5 (delete task via chat) in backend/tests/test_integration.py::test_e2e_delete_task_via_chat
-- [ ] T101 [P] Write E2E test for US6 (conversation persistence) in backend/tests/test_integration.py::test_e2e_conversation_persistence
-- [ ] T102 Write E2E test for Phase 2 compatibility (task created in UI visible in chat) in backend/tests/test_integration.py::test_phase2_compatibility
-- [ ] T103 Run all integration tests - pytest backend/tests/test_integration.py -v
-- [ ] T104 Run all backend unit tests - pytest backend/tests/ -v
-- [ ] T105 Run all frontend tests - npm test frontend/__tests__/
-- [ ] T106 Manual QA: Verify all acceptance scenarios from spec.md (US1-US6)
+- [ ] T078 [P] Write E2E test for US1 (create task via chat) in backend/tests/test_integration.py::test_e2e_create_task_via_chat
+- [ ] T079 [P] Write E2E test for US2 (list tasks via chat) in backend/tests/test_integration.py::test_e2e_list_tasks_via_chat
+- [ ] T080 [P] Write E2E test for US3 (complete task via chat) in backend/tests/test_integration.py::test_e2e_complete_task_via_chat
+- [ ] T081 [P] Write E2E test for US4 (update task via chat) in backend/tests/test_integration.py::test_e2e_update_task_via_chat
+- [ ] T082 [P] Write E2E test for US5 (delete task via chat) in backend/tests/test_integration.py::test_e2e_delete_task_via_chat
+- [ ] T083 [P] Write E2E test for US6 (conversation persistence) in backend/tests/test_integration.py::test_e2e_conversation_persistence
+- [ ] T084 Write E2E test for Phase 2 compatibility (task created in UI visible in chat) in backend/tests/test_integration.py::test_phase2_compatibility
+- [ ] T085 Run all integration tests - pytest backend/tests/test_integration.py -v
+- [ ] T086 Run all backend unit tests - pytest backend/tests/ -v
+- [ ] T087 Run all frontend tests - npm test frontend/__tests__/
+- [ ] T088 Manual QA: Verify all acceptance scenarios from spec.md (US1-US6)
 
 **Checkpoint**: All tests passing, all user stories verified
 
@@ -288,15 +271,15 @@ This is a **web application** with:
 
 **Purpose**: Performance, security, documentation
 
-- [ ] T107 Implement rate limiting (100 req/hour per user) in backend/routes/chat.py per research.md rate limiting pattern
-- [ ] T108 [P] Add request logging with user_id, conversation_id, tool_calls in backend/routes/chat.py
-- [ ] T109 [P] Add performance monitoring (response time tracking) in backend/routes/chat.py
-- [ ] T110 [P] Update .env.example with all required Phase 3 environment variables per quickstart.md
-- [ ] T111 [P] Verify Phase 2 tests still pass - run existing Phase 2 test suite to confirm no regressions (SC-008)
-- [ ] T112 Load test chat endpoint with 50 concurrent users per SC-009 using locust or similar
-- [ ] T113 [P] Add inline documentation for all MCP tools in backend/mcp/tools.py
-- [ ] T114 [P] Add inline documentation for agent service in backend/services/agent.py
-- [ ] T115 [P] Add inline documentation for chat endpoint in backend/routes/chat.py
+- [ ] T089 Implement rate limiting (100 req/hour per user) in backend/routes/chat.py per research.md rate limiting pattern
+- [ ] T090 [P] Add request logging with user_id, conversation_id, tool_calls in backend/routes/chat.py
+- [ ] T091 [P] Add performance monitoring (response time tracking) in backend/routes/chat.py
+- [ ] T092 [P] Update .env.example with all required Phase 3 environment variables per quickstart.md
+- [ ] T093 [P] Verify Phase 2 tests still pass - run existing Phase 2 test suite to confirm no regressions (SC-008)
+- [ ] T094 Load test chat endpoint with 50 concurrent users per SC-009 using locust or similar
+- [ ] T095 [P] Add inline documentation for all MCP tools in backend/mcp/server.py
+- [ ] T096 [P] Add inline documentation for agent service in backend/services/agent.py
+- [ ] T097 [P] Add inline documentation for chat endpoint in backend/routes/chat.py
 
 **Final Checkpoint**: Feature complete, tested, documented, ready for deployment
 
@@ -309,51 +292,52 @@ This is a **web application** with:
 ```
 Phase 1: Setup (T001-T005)
     ↓
-Phase 2: Foundational (T006-T012) ← BLOCKING - must complete before user stories
+Phase 2: Foundational (T006-T014) ← BLOCKING - must complete before user stories
     ↓
-    ├─→ Phase 3: US1 - Task Creation (T013-T024) 🎯 MVP - can run in parallel
-    ├─→ Phase 4: US2 - Task Listing (T025-T035) - can run in parallel with US1
-    └─→ Phase 5: US6 - Conversation History (T036-T051) - REQUIRED before US3-US5
+    ├─→ Phase 3: US1 - Task Creation (T015-T023) 🎯 MVP - can run in parallel
+    ├─→ Phase 4: US2 - Task Listing (T024-T030) - can run in parallel with US1
+    └─→ Phase 5: US6 - Conversation History (T031-T045) - REQUIRED before US3-US5
             ↓
-            ├─→ Phase 6: US3 - Task Completion (T052-T061) - can run in parallel
-            ├─→ Phase 7: US4 - Task Updates (T062-T072) - can run in parallel
-            └─→ Phase 8: US5 - Task Deletion (T073-T082) - can run in parallel
+            ├─→ Phase 6: US3 - Task Completion (T046-T051) - can run in parallel
+            ├─→ Phase 7: US4 - Task Updates (T052-T058) - can run in parallel
+            └─→ Phase 8: US5 - Task Deletion (T059-T064) - can run in parallel
                     ↓
-                Phase 9: Frontend UI (T083-T095) - requires chat endpoint from US6
+                Phase 9: Frontend UI (T065-T077) - requires chat endpoint from US6
                     ↓
-                Phase 10: Integration Testing (T096-T106)
+                Phase 10: Integration Testing (T078-T088)
                     ↓
-                Phase 11: Polish (T107-T115)
+                Phase 11: Polish (T089-T097)
 ```
 
 ### Parallel Execution Opportunities
 
 **After Phase 2 completes, these can run in parallel**:
-- US1 (T013-T024) + US2 (T025-T035) - independent MCP tools
+- US1 (T015-T023) + US2 (T024-T030) - independent MCP tools
 
 **After US6 completes, these can run in parallel**:
-- US3 (T052-T061) + US4 (T062-T072) + US5 (T073-T082) - independent MCP tools
+- US3 (T046-T051) + US4 (T052-T058) + US5 (T059-T064) - independent MCP tools
 
 **Within each phase**:
 - All [P] marked tasks can run in parallel (different files)
-- Test writing tasks (T013-T016, T025-T029, etc.) can all run in parallel
+- Test writing tasks (T015-T018, T024-T028, etc.) can all run in parallel
 
 ### MVP Scope Recommendation
 
 **Minimum Viable Product** (ready to demo):
 - Phase 1: Setup (T001-T005)
-- Phase 2: Foundational (T006-T012)
-- Phase 3: US1 - Task Creation (T013-T024)
-- Phase 5: US6 - Conversation History (T036-T051, skipping T036-T040 tests if time-constrained)
-- Phase 9: Frontend UI (T087-T095, minimal implementation)
+- Phase 2: Foundational (T006-T014)
+- Phase 3: US1 - Task Creation (T015-T023)
+- Phase 5: US6 - Conversation History (T031-T045, skipping T031-T034 tests if time-constrained)
+- Phase 9: Frontend UI (T069-T077, minimal implementation)
 
 This MVP delivers:
 ✅ Chat interface
 ✅ Natural language task creation
 ✅ Conversation persistence
 ✅ Integration with Phase 2 task list
+✅ MCP server with add_task tool
 
-**Total**: ~40 tasks for MVP, ~115 tasks for complete feature
+**Total**: ~35 tasks for MVP, ~97 tasks for complete feature
 
 ---
 
@@ -365,6 +349,8 @@ This MVP delivers:
 4. **Parallel Execution**: Use [P] markers to identify parallelizable tasks
 5. **Checkpoints**: Verify each phase checkpoint before moving to next phase
 6. **Phase 2 Compatibility**: Run Phase 2 tests after each phase to catch regressions early
+7. **MCP Server Architecture**: Build MCP server with FastMCP, connect agent via MCPServerStreamableHttp
+8. **Separate Processes**: Run MCP server (port 8000) and chat endpoint separately for scalability
 
 ---
 
@@ -381,10 +367,12 @@ Before marking feature complete, verify:
 - [ ] Performance goals met (chat endpoint <3s p95, 50 concurrent users)
 - [ ] Security verified (user isolation, JWT auth, ownership checks)
 - [ ] Documentation complete (inline docs, .env.example updated)
+- [ ] MCP server runs independently at http://localhost:8000/mcp
 
 ---
 
-**Total Tasks**: 115 tasks
-**MVP Tasks**: ~40 tasks (Phases 1, 2, 3, 5 minimal, 9 minimal)
-**Estimated Parallel Opportunities**: ~60 tasks marked [P]
+**Total Tasks**: 97 tasks (using FastMCP server + OpenAI Agents MCP integration)
+**MVP Tasks**: ~35 tasks (Phases 1, 2, 3, 5 minimal, 9 minimal)
+**Estimated Parallel Opportunities**: ~42 tasks marked [P]
 **User Stories**: 6 stories (US1-US6) organized as independent, testable increments
+**Architecture**: MCP server (FastMCP) + OpenAI Agent (MCPServerStreamableHttp integration)

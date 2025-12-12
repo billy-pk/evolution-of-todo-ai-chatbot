@@ -58,36 +58,91 @@ response = agent.run(
 
 ---
 
-## 2. MCP (Model Context Protocol) Tools
+## 2. MCP (Model Context Protocol) Server Integration
 
 ### Decision
-Use the **official MCP SDK for Python** to expose task operations as standardized tools that the AI agent can call.
+Build an **MCP server using FastMCP** (official MCP Python SDK) and connect it to the OpenAI Agent using **MCPServerStreamableHttp** (OpenAI Agents SDK MCP integration).
 
 ### Rationale
-- MCP provides a standardized protocol for tool definitions that OpenAI Agents SDK understands
-- Official Python SDK simplifies tool registration and validation
-- Type-safe tool parameter definitions using Pydantic
-- Built-in error handling and validation
-- Aligns with OpenAI's tool calling specifications
+- MCP provides a standardized protocol for exposing tools to AI agents
+- FastMCP simplifies server implementation with decorators and automatic schema generation
+- OpenAI Agents SDK has built-in MCP integration (MCPServerStdio, MCPServerStreamableHttp, MCPServerSse)
+- Streamable HTTP transport enables scalable, stateless server deployment
+- Clear separation of concerns: MCP server handles task operations, Agent handles AI logic
+- Supports future extensibility (can add more MCP tools without changing agent code)
 
 ### Implementation Pattern
+
+**MCP Server (backend/mcp/server.py)**:
 ```python
-from mcp import Tool, ToolParameter
-from pydantic import BaseModel, Field
+from mcp.server.fastmcp import FastMCP
+from backend.models import Task
+from backend.db import engine
+from sqlmodel import Session
 
-# Define tool schema
-class AddTaskParams(BaseModel):
-    user_id: str = Field(..., description="User ID from JWT token")
-    title: str = Field(..., min_length=1, max_length=200, description="Task title")
-    description: str | None = Field(None, max_length=1000, description="Optional task description")
+# Create MCP server with stateless HTTP configuration
+mcp = FastMCP("TaskMCPServer", stateless_http=True, json_response=True)
 
-# Create MCP tool
-add_task_tool = Tool(
-    name="add_task",
-    description="Create a new task for the user",
-    parameters=AddTaskParams,
-    function=add_task_handler  # Actual implementation
-)
+@mcp.tool()
+def add_task(user_id: str, title: str, description: str = None) -> dict:
+    """Create a new task for the user.
+
+    Args:
+        user_id: User ID from JWT token (1-255 characters)
+        title: Task title (required, 1-200 characters)
+        description: Optional task description (max 1000 characters)
+
+    Returns:
+        Dict with status and task data
+    """
+    with Session(engine) as session:
+        task = Task(user_id=user_id, title=title, description=description, completed=False)
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+
+        return {
+            "status": "success",
+            "data": {
+                "task_id": str(task.id),
+                "title": task.title,
+                "description": task.description
+            }
+        }
+
+# Run MCP server with streamable-http transport
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
+    # Server runs at http://localhost:8000/mcp
+```
+
+**Agent Integration (backend/services/agent.py)**:
+```python
+from agents import Agent, Runner
+from agents.mcp import MCPServerStreamableHttp
+from backend.config import settings
+
+async def create_agent():
+    """Create agent connected to MCP server."""
+    async with MCPServerStreamableHttp(
+        name="Task MCP Server",
+        params={
+            "url": "http://localhost:8000/mcp",
+            "timeout": 10,
+        },
+        cache_tools_list=True,
+    ) as server:
+        agent = Agent(
+            name="TaskAssistant",
+            instructions="You are a helpful assistant that manages todo tasks...",
+            mcp_servers=[server],
+            model="gpt-4o"
+        )
+        return agent, server
+
+# Usage in chat endpoint
+async with create_agent() as (agent, server):
+    result = await Runner.run(agent, user_message)
 ```
 
 ### Tool Definitions (5 tools)
@@ -105,16 +160,22 @@ Every tool MUST:
 4. Log all operations for audit trail
 
 ### Best Practices
-- Use Pydantic models for parameter validation
-- Return consistent JSON structure from all tools
+- Use FastMCP `@mcp.tool()` decorator for automatic schema generation
+- Return consistent JSON structure (dict) from all tools
 - Include task_id in all responses for confirmation
-- Provide clear error messages for user feedback
-- Validate user_id matches JWT token before calling tools
+- Provide clear error messages in docstrings
+- Validate user_id matches JWT token in chat endpoint before calling agent
+- Run MCP server as separate process (enables scaling and isolation)
+
+### Transport Options
+- **Streamable HTTP** (chosen): Stateless, scalable, supports load balancing
+- **Stdio**: Subprocess communication, simpler but less scalable
+- **SSE**: Server-Sent Events, good for real-time streaming
 
 ### Alternatives Considered
-- **Custom JSON schema definitions**: More manual work, less type safety
+- **OpenAI Agents native function_tool**: Less separation of concerns, harder to scale tools independently
 - **LangChain Tools**: Tied to LangChain ecosystem, unnecessary dependency
-- **Direct function calls**: No standardization, harder to maintain and test
+- **Custom tool protocol**: Reinventing MCP standard, less interoperability
 
 ---
 
