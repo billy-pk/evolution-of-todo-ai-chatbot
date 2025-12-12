@@ -30,6 +30,17 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 5
     DB_POOL_MAX_OVERFLOW: int = 10
 
+    # OpenAI Configuration
+    OPENAI_API_KEY: str
+    OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_API_TIMEOUT: int = 30
+
+    # MCP Server Configuration
+    MCP_SERVER_URL: str = "http://localhost:8000/mcp"
+
+    # Rate Limiting
+    RATE_LIMIT_REQUESTS_PER_HOUR: int = 100
+
 
 # Create a single instance of settings
 settings = Settings()

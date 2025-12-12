@@ -62,4 +62,4 @@ Implement Model Context Protocol (MCP) tools for AI agent integration with the f
 - Feature Spec: specs/001-ai-chatbot/spec.md
 - Implementation Plan: specs/001-ai-chatbot/plan.md
 - Related ADRs: None
-- Evaluator Evidence: specs/001-ai-chatbot/research.md, specs/001-ai-chatbot/contracts/chat-api.yaml
+- Evaluator Evidence: specs/001-ai-chatbot/research.md, specs/001-ai-chatbot/contracts/chat-endpoint.md, specs/001-ai-chatbot/contracts/mcp-tools.md
