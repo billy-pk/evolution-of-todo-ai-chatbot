@@ -1,0 +1,169 @@
+"""
+AI Agent Service
+
+This module provides the AI agent service that connects to the MCP server
+and processes user messages. It uses the OpenAI Agents SDK with MCP integration.
+
+Architecture:
+- Connects to MCP server via MCPServerStreamableHttp
+- Uses OpenAI GPT-4o model for natural language understanding
+- Stateless design: loads conversation history from database
+- Returns structured responses with tool calls
+"""
+
+from agents import Agent, Runner
+from agents.mcp import MCPServerStreamableHttp
+from agents.model_settings import ModelSettings
+from config import settings
+from typing import List, Dict, Any
+import logging
+import os
+
+# Set OpenAI API key in environment for agents SDK
+os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
+
+logger = logging.getLogger(__name__)
+
+
+async def create_task_agent(user_id: str):
+    """
+    Create an AI agent connected to the Task MCP Server.
+
+    Args:
+        user_id: User ID for contextualizing agent responses
+
+    Returns:
+        Tuple of (agent, server) for use in async context manager
+    """
+    # Connect to MCP server
+    server = MCPServerStreamableHttp(
+        name="Task MCP Server",
+        params={
+            "url": settings.MCP_SERVER_URL,  # http://localhost:8000/mcp
+            "timeout": settings.OPENAI_API_TIMEOUT,
+        },
+        cache_tools_list=True,
+        max_retry_attempts=3,
+    )
+
+    # Create agent with MCP tools
+    agent = Agent(
+        name="TaskAssistant",
+        instructions=f"""You are a helpful assistant that manages todo tasks for users.
+
+You have access to tools to create, list, update, complete, and delete tasks.
+
+Current user ID: {user_id}
+
+Guidelines:
+- Always use the provided user_id when calling tools
+- Be concise and friendly in your responses
+- When creating tasks, extract the task title from user input
+- When listing tasks, format them in a clear, readable way
+- Confirm actions after completing them (e.g., "I've added 'Buy groceries' to your tasks")
+- If a request is ambiguous, ask for clarification
+""",
+        mcp_servers=[server],
+        model=settings.OPENAI_MODEL,  # gpt-4o
+    )
+
+    return agent, server
+
+
+async def process_message(
+    user_id: str,
+    message: str,
+    conversation_history: List[Dict[str, str]] = None
+) -> Dict[str, Any]:
+    """
+    Process a user message using the AI agent.
+
+    Args:
+        user_id: User ID from JWT token
+        message: User's message text
+        conversation_history: Previous messages in conversation (optional)
+
+    Returns:
+        Dict with:
+            - response: AI assistant's text response
+            - tool_calls: List of tool calls made (for logging)
+            - model: Model used
+            - tokens_used: Approximate token count
+    """
+    try:
+        # Create agent with MCP connection
+        agent, server = await create_task_agent(user_id)
+
+        async with server:
+            # Prepare messages for agent
+            messages = []
+            if conversation_history:
+                messages.extend(conversation_history)
+            messages.append({"role": "user", "content": message})
+
+            # Run agent
+            logger.info(f"Processing message for user {user_id}: {message[:100]}...")
+            result = await Runner.run(agent, messages)
+
+            # Extract tool calls from result
+            tool_calls = []
+            if hasattr(result, 'tool_calls') and result.tool_calls:
+                for tool_call in result.tool_calls:
+                    tool_calls.append({
+                        "tool": tool_call.name,
+                        "parameters": tool_call.arguments,
+                        "result": tool_call.result if hasattr(tool_call, 'result') else None
+                    })
+
+            # Return structured response
+            return {
+                "response": result.final_output if hasattr(result, 'final_output') else str(result),
+                "tool_calls": tool_calls,
+                "model": settings.OPENAI_MODEL,
+                "tokens_used": 0,  # TODO: Extract from result if available
+            }
+
+    except Exception as e:
+        logger.error(f"Error processing message: {str(e)}", exc_info=True)
+        return {
+            "response": "I'm sorry, I encountered an error processing your request. Please try again.",
+            "tool_calls": [],
+            "model": settings.OPENAI_MODEL,
+            "tokens_used": 0,
+            "error": str(e)
+        }
+
+
+async def process_message_streaming(
+    user_id: str,
+    message: str,
+    conversation_history: List[Dict[str, str]] = None
+):
+    """
+    Process a user message with streaming support (for future use).
+
+    Args:
+        user_id: User ID from JWT token
+        message: User's message text
+        conversation_history: Previous messages in conversation (optional)
+
+    Yields:
+        Stream events from the agent
+    """
+    try:
+        agent, server = await create_task_agent(user_id)
+
+        async with server:
+            messages = []
+            if conversation_history:
+                messages.extend(conversation_history)
+            messages.append({"role": "user", "content": message})
+
+            # Run agent with streaming
+            result = Runner.run_streamed(agent, messages)
+            async for event in result.stream_events():
+                yield event
+
+    except Exception as e:
+        logger.error(f"Error in streaming: {str(e)}", exc_info=True)
+        yield {"type": "error", "error": str(e)}

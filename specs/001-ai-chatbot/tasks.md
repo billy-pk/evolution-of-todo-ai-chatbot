@@ -67,20 +67,20 @@ This is a **web application** with:
 
 > **CRITICAL**: Write these tests FIRST, ensure they FAIL, then implement to make them PASS
 
-- [ ] T015 [P] [US1] Write unit test for add_task MCP tool in backend/tests/test_mcp_tools.py::test_add_task_creates_task
-- [ ] T016 [P] [US1] Write unit test for add_task with description in backend/tests/test_mcp_tools.py::test_add_task_with_description
-- [ ] T017 [P] [US1] Write unit test for add_task validation errors in backend/tests/test_mcp_tools.py::test_add_task_validation_errors
-- [ ] T018 [P] [US1] Run pytest - confirm T015-T017 FAIL (Red phase)
+- [x] T015 [P] [US1] Write unit test for add_task MCP tool in backend/tests/test_mcp_tools.py::test_add_task_creates_task
+- [x] T016 [P] [US1] Write unit test for add_task with description in backend/tests/test_mcp_tools.py::test_add_task_with_description
+- [x] T017 [P] [US1] Write unit test for add_task validation errors in backend/tests/test_mcp_tools.py::test_add_task_validation_errors
+- [x] T018 [P] [US1] Run pytest - confirm T015-T017 FAIL (Red phase) ✅ TESTS FAILED AS EXPECTED
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Create backend/mcp/server.py with FastMCP server initialization (from mcp.server.fastmcp import FastMCP, stateless_http=True, json_response=True)
-- [ ] T020 [US1] Implement add_task tool using @mcp.tool() decorator in backend/mcp/server.py (accepts user_id, title, description; returns dict with status/data per contracts/mcp-tools.md)
-- [ ] T021 [US1] Run pytest backend/tests/test_mcp_tools.py::test_add_task* - confirm tests PASS (Green phase)
-- [ ] T022 [P] [US1] Create backend/services/agent.py with OpenAI Agent initialization and MCPServerStreamableHttp integration per contracts/mcp-tools.md
-- [ ] T023 [US1] Add MCP server startup script/command to run `python backend/mcp/server.py` (runs at http://localhost:8000/mcp)
+- [x] T019 [US1] Create backend/tools/server.py with FastMCP server initialization (from mcp.server import FastMCP, stateless_http=True, json_response=True)
+- [x] T020 [US1] Implement add_task tool using @mcp.tool() decorator in backend/tools/server.py (accepts user_id, title, description; returns dict with status/data per contracts/mcp-tools.md)
+- [x] T021 [US1] Run pytest backend/tests/test_mcp_tools.py::test_add_task* - confirm tests PASS (Green phase) ✅ ALL 3 TESTS PASSING
+- [x] T022 [P] [US1] Create backend/services/agent.py with OpenAI Agent initialization and MCPServerStreamableHttp integration per contracts/mcp-tools.md
+- [x] T023 [US1] Add MCP server startup script backend/scripts/start_mcp_server.sh (runs at http://localhost:8000/mcp)
 
-**Checkpoint**: add_task MCP tool implemented and tested, MCP server runnable (US1 core functionality ready)
+**Checkpoint**: add_task MCP tool implemented and tested, MCP server runnable (US1 core functionality ready) ✅
 
 ---
 
