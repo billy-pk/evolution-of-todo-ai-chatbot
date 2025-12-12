@@ -1,0 +1,580 @@
+# Chat API Contract
+
+## 1. Overview
+
+This document defines the API contract for the AI-powered chatbot functionality. The API follows REST principles and maintains compatibility with existing Phase 2 authentication and data structures.
+
+## 2. Base URL and Authentication
+
+### Base URL
+```
+https://api.yourdomain.com/api/{user_id}
+```
+
+### Authentication
+All endpoints require JWT authentication using the Authorization header:
+```
+Authorization: Bearer <jwt_token>
+```
+
+The user_id in the path must match the user_id in the JWT token, otherwise a 403 Forbidden response will be returned.
+
+## 3. Common Error Responses
+
+### 401 Unauthorized
+- **Description**: Invalid or missing JWT token
+- **Response Body**:
+```json
+{
+  "detail": "Unauthorized: Invalid or missing authentication token"
+}
+```
+
+### 403 Forbidden
+- **Description**: User_id in path doesn't match token user_id, or user trying to access unauthorized resources
+- **Response Body**:
+```json
+{
+  "detail": "Forbidden: You don't have permission to access this resource"
+}
+```
+
+### 404 Not Found
+- **Description**: Resource doesn't exist (conversation, task, etc.)
+- **Response Body**:
+```json
+{
+  "detail": "Not found: The requested resource does not exist"
+}
+```
+
+### 429 Too Many Requests
+- **Description**: Rate limit exceeded
+- **Response Body**:
+```json
+{
+  "detail": "Rate limit exceeded: Please try again later",
+  "retry_after": 3600
+}
+```
+
+### 500 Internal Server Error
+- **Description**: Server-side error
+- **Response Body**:
+```json
+{
+  "detail": "Internal server error: Something went wrong processing your request"
+}
+```
+
+## 4. Chat API Endpoints
+
+### 4.1 Send Message to Chat
+
+#### Endpoint
+```
+POST /api/{user_id}/chat
+```
+
+#### Description
+Sends a message to the AI chatbot and receives a response. Creates a new conversation if conversation_id is not provided.
+
+#### Request Parameters
+- **Path**: `user_id` (string) - User ID from JWT token, must match authenticated user
+- **Headers**: `Authorization: Bearer <token>`
+
+#### Request Body
+```json
+{
+  "message": "string (required) - The user's message to the AI",
+  "conversation_id": "integer (optional) - ID of existing conversation, creates new if omitted"
+}
+```
+
+#### Request Body Schema
+```json
+{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "conversation_id": {
+      "type": "integer",
+      "minimum": 1,
+      "nullable": true
+    }
+  },
+  "required": ["message"]
+}
+```
+
+#### Success Response (200 OK)
+```json
+{
+  "conversation_id": 123,
+  "response": "string - The AI assistant's response",
+  "tool_calls": [
+    {
+      "name": "string - Name of the MCP tool called",
+      "arguments": "object - Arguments passed to the tool",
+      "result": "object - Result from the tool execution"
+    }
+  ],
+  "messages": [
+    {
+      "id": 456,
+      "role": "user",
+      "content": "Add a task to buy groceries",
+      "created_at": "2025-12-10T10:30:00Z"
+    },
+    {
+      "id": 457,
+      "role": "assistant",
+      "content": "I've created the task 'buy groceries' for you.",
+      "created_at": "2025-12-10T10:30:05Z"
+    }
+  ]
+}
+```
+
+#### Success Response Schema
+```json
+{
+  "type": "object",
+  "properties": {
+    "conversation_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "response": {
+      "type": "string"
+    },
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "arguments": {"type": "object"},
+          "result": {"type": "object"}
+        },
+        "required": ["name", "arguments", "result"]
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "role": {"type": "string", "enum": ["user", "assistant"]},
+          "content": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"}
+        },
+        "required": ["id", "role", "content", "created_at"]
+      }
+    }
+  },
+  "required": ["conversation_id", "response", "messages"]
+}
+```
+
+#### Example Request
+```http
+POST /api/abc123/chat
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "message": "Add a task to buy groceries and milk",
+  "conversation_id": 456
+}
+```
+
+#### Example Response
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "conversation_id": 456,
+  "response": "I've created the task 'buy groceries and milk' for you. It's been added to your task list.",
+  "tool_calls": [
+    {
+      "name": "add_task",
+      "arguments": {
+        "user_id": "abc123",
+        "title": "buy groceries and milk",
+        "description": null
+      },
+      "result": {
+        "task_id": 789,
+        "title": "buy groceries and milk",
+        "completed": false
+      }
+    }
+  ],
+  "messages": [
+    {
+      "id": 101,
+      "role": "user",
+      "content": "Add a task to buy groceries and milk",
+      "created_at": "2025-12-10T10:30:00Z"
+    },
+    {
+      "id": 102,
+      "role": "assistant",
+      "content": "I've created the task 'buy groceries and milk' for you. It's been added to your task list.",
+      "created_at": "2025-12-10T10:30:05Z"
+    }
+  ]
+}
+```
+
+### 4.2 Get Conversation History
+
+#### Endpoint
+```
+GET /api/{user_id}/conversations/{conversation_id}
+```
+
+#### Description
+Retrieves the message history for a specific conversation.
+
+#### Request Parameters
+- **Path**:
+  - `user_id` (string) - User ID from JWT token, must match authenticated user
+  - `conversation_id` (integer) - ID of the conversation to retrieve
+- **Headers**: `Authorization: Bearer <token>`
+
+#### Success Response (200 OK)
+```json
+{
+  "conversation": {
+    "id": 123,
+    "title": "Task management discussion",
+    "created_at": "2025-12-10T10:00:00Z",
+    "updated_at": "2025-12-10T10:30:05Z"
+  },
+  "messages": [
+    {
+      "id": 101,
+      "role": "user",
+      "content": "Add a task to buy groceries",
+      "created_at": "2025-12-10T10:30:00Z"
+    },
+    {
+      "id": 102,
+      "role": "assistant",
+      "content": "I've created the task 'buy groceries' for you.",
+      "created_at": "2025-12-10T10:30:05Z"
+    }
+  ]
+}
+```
+
+#### Example Request
+```http
+GET /api/abc123/conversations/123
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+#### Example Response
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "conversation": {
+    "id": 123,
+    "title": "Task management discussion",
+    "created_at": "2025-12-10T10:00:00Z",
+    "updated_at": "2025-12-10T10:30:05Z"
+  },
+  "messages": [
+    {
+      "id": 101,
+      "role": "user",
+      "content": "Add a task to buy groceries",
+      "created_at": "2025-12-10T10:30:00Z"
+    },
+    {
+      "id": 102,
+      "role": "assistant",
+      "content": "I've created the task 'buy groceries' for you.",
+      "created_at": "2025-12-10T10:30:05Z"
+    }
+  ]
+}
+```
+
+### 4.3 Get User Conversations
+
+#### Endpoint
+```
+GET /api/{user_id}/conversations
+```
+
+#### Description
+Retrieves a list of all conversations for the user, ordered by most recent activity.
+
+#### Request Parameters
+- **Path**: `user_id` (string) - User ID from JWT token, must match authenticated user
+- **Headers**: `Authorization: Bearer <token>`
+- **Query Parameters**:
+  - `limit` (integer, optional, default: 20) - Maximum number of conversations to return
+  - `offset` (integer, optional, default: 0) - Number of conversations to skip
+
+#### Success Response (200 OK)
+```json
+{
+  "conversations": [
+    {
+      "id": 123,
+      "title": "Task management discussion",
+      "created_at": "2025-12-10T10:00:00Z",
+      "updated_at": "2025-12-10T10:30:05Z"
+    },
+    {
+      "id": 122,
+      "title": "Completed tasks review",
+      "created_at": "2025-12-09T15:45:00Z",
+      "updated_at": "2025-12-09T16:20:10Z"
+    }
+  ],
+  "total": 2
+}
+```
+
+#### Example Request
+```http
+GET /api/abc123/conversations?limit=10&offset=0
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+#### Example Response
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "conversations": [
+    {
+      "id": 123,
+      "title": "Task management discussion",
+      "created_at": "2025-12-10T10:00:00Z",
+      "updated_at": "2025-12-10T10:30:05Z"
+    },
+    {
+      "id": 122,
+      "title": "Completed tasks review",
+      "created_at": "2025-12-09T15:45:00Z",
+      "updated_at": "2025-12-09T16:20:10Z"
+    }
+  ],
+  "total": 2
+}
+```
+
+### 4.4 Delete Conversation
+
+#### Endpoint
+```
+DELETE /api/{user_id}/conversations/{conversation_id}
+```
+
+#### Description
+Deletes a conversation and all its associated messages.
+
+#### Request Parameters
+- **Path**:
+  - `user_id` (string) - User ID from JWT token, must match authenticated user
+  - `conversation_id` (integer) - ID of the conversation to delete
+- **Headers**: `Authorization: Bearer <token>`
+
+#### Success Response (204 No Content)
+No response body returned on successful deletion.
+
+#### Example Request
+```http
+DELETE /api/abc123/conversations/123
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+#### Example Response
+```http
+HTTP/1.1 204 No Content
+```
+
+### 4.5 Create New Conversation
+
+#### Endpoint
+```
+POST /api/{user_id}/conversations
+```
+
+#### Description
+Creates a new conversation. Typically used when the UI needs to start a fresh conversation.
+
+#### Request Parameters
+- **Path**: `user_id` (string) - User ID from JWT token, must match authenticated user
+- **Headers**: `Authorization: Bearer <token>`
+
+#### Request Body
+```json
+{
+  "title": "string (optional) - Initial title for the conversation"
+}
+```
+
+#### Success Response (201 Created)
+```json
+{
+  "id": 124,
+  "title": "New conversation",
+  "created_at": "2025-12-10T11:00:00Z",
+  "updated_at": "2025-12-10T11:00:00Z"
+}
+```
+
+#### Example Request
+```http
+POST /api/abc123/conversations
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+
+{
+  "title": "New task planning session"
+}
+```
+
+#### Example Response
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "id": 124,
+  "title": "New task planning session",
+  "created_at": "2025-12-10T11:00:00Z",
+  "updated_at": "2025-12-10T11:00:00Z"
+}
+```
+
+## 5. MCP (Model Context Protocol) Tool Contracts
+
+The following tools are available for the AI agent to call:
+
+### 5.1 add_task
+**Description**: Creates a new task for the user
+**Input**:
+```json
+{
+  "user_id": "string",
+  "title": "string",
+  "description": "string or null"
+}
+```
+**Output**:
+```json
+{
+  "task_id": "integer",
+  "title": "string",
+  "description": "string or null",
+  "completed": "boolean"
+}
+```
+
+### 5.2 list_tasks
+**Description**: Retrieves tasks for the user with optional filtering
+**Input**:
+```json
+{
+  "user_id": "string",
+  "status": "string ('all', 'pending', 'completed') - default: 'all'"
+}
+```
+**Output**:
+```json
+{
+  "tasks": [
+    {
+      "id": "integer",
+      "title": "string",
+      "description": "string or null",
+      "completed": "boolean",
+      "created_at": "string (date-time)",
+      "updated_at": "string (date-time)"
+    }
+  ]
+}
+```
+
+### 5.3 update_task
+**Description**: Updates an existing task
+**Input**:
+```json
+{
+  "user_id": "string",
+  "task_id": "integer",
+  "title": "string or null",
+  "description": "string or null"
+}
+```
+**Output**:
+```json
+{
+  "task_id": "integer",
+  "title": "string",
+  "description": "string or null",
+  "completed": "boolean"
+}
+```
+
+### 5.4 complete_task
+**Description**: Marks a task as completed
+**Input**:
+```json
+{
+  "user_id": "string",
+  "task_id": "integer"
+}
+```
+**Output**:
+```json
+{
+  "task_id": "integer",
+  "completed": "boolean"
+}
+```
+
+### 5.5 delete_task
+**Description**: Deletes a task
+**Input**:
+```json
+{
+  "user_id": "string",
+  "task_id": "integer"
+}
+```
+**Output**:
+```json
+{
+  "task_id": "integer",
+  "deleted": "boolean"
+}
+```
+
+## 6. Rate Limiting
+
+All API endpoints implement rate limiting:
+- **Limit**: 100 requests per hour per user
+- **Window**: Rolling 60-minute window
+- **Response**: 429 Too Many Requests with retry_after header indicating seconds until reset
+
+## 7. Versioning
+
+This API uses URI versioning. All endpoints are currently at version 1 (implied by the path structure). Future versions will be indicated by `/v2/`, `/v3/`, etc. in the path.
