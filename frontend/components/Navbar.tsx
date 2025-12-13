@@ -35,10 +35,27 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo/Title */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-6">
             <h1 className="text-lg sm:text-xl font-bold text-gray-900">
               📝 Todo App
             </h1>
+            {/* T071: Navigation Links */}
+            {session?.user && (
+              <div className="hidden md:flex items-center gap-4">
+                <a
+                  href="/tasks"
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  Tasks
+                </a>
+                <a
+                  href="/chat"
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  Chat
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Desktop navigation - hidden on mobile */}
@@ -110,6 +127,23 @@ export function Navbar() {
               </div>
             ) : session?.user ? (
               <div className="space-y-3">
+                {/* Mobile navigation links */}
+                <div className="space-y-1 px-2">
+                  <a
+                    href="/tasks"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Tasks
+                  </a>
+                  <a
+                    href="/chat"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Chat
+                  </a>
+                </div>
                 <div className="text-sm px-2">
                   <span className="text-gray-500 block">Signed in as</span>
                   <span className="font-medium text-gray-900 block mt-1">
