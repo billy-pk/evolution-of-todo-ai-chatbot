@@ -27,13 +27,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["chat"])
 
 
-async def verify_user_access(request: Request, path_user_id: str) -> str:
+async def verify_user_access(request: Request, user_id: str) -> str:
     """
     Verify that the JWT token user_id matches the path parameter user_id.
 
     Args:
         request: FastAPI request object (contains JWT token)
-        path_user_id: user_id from path parameter
+        user_id: user_id from path parameter
 
     Returns:
         str: Validated user_id
@@ -43,9 +43,9 @@ async def verify_user_access(request: Request, path_user_id: str) -> str:
     """
     # JWT token is already validated by JWTBearer middleware
     # Here we just verify the user_id matches
-    token_user_id = request.state.user_id if hasattr(request.state, 'user_id') else path_user_id
+    token_user_id = request.state.user_id if hasattr(request.state, 'user_id') else user_id
 
-    if token_user_id != path_user_id:
+    if token_user_id != user_id:
         raise HTTPException(
             status_code=403,
             detail="User ID in token does not match path parameter"
@@ -84,6 +84,10 @@ async def chat(
         HTTPException: 400/404/500 for various errors
     """
     try:
+        logger.info(f"=== CHAT ENDPOINT: Received request for user {user_id}")
+        logger.info(f"=== CHAT ENDPOINT: Message: {chat_request.message}")
+        logger.info(f"=== CHAT ENDPOINT: Conversation ID: {chat_request.conversation_id}")
+
         # Step 1: Load or create conversation
         conversation = await _get_or_create_conversation(
             session=session,

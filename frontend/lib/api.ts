@@ -19,6 +19,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
  * Custom error class for API errors
  */
 export class APIError extends Error {
+  public status?: number;
+
   constructor(
     message: string,
     public statusCode?: number,
@@ -26,6 +28,7 @@ export class APIError extends Error {
   ) {
     super(message);
     this.name = "APIError";
+    this.status = statusCode;
   }
 }
 
@@ -92,13 +95,16 @@ async function fetchAPI<T>(
 
     try {
       errorDetails = await response.json();
+      console.error('=== API ERROR RESPONSE ===', errorDetails);
       errorMessage = errorDetails.detail || errorDetails.message || errorMessage;
     } catch {
       // If parsing JSON fails, use status text
       errorMessage = response.statusText || errorMessage;
     }
 
-    throw new APIError(errorMessage, response.status, errorDetails);
+    const error = new APIError(errorMessage, response.status, errorDetails);
+    error.status = response.status;
+    throw error;
   }
 
   // Handle 204 No Content responses (e.g., DELETE operations)
@@ -185,3 +191,33 @@ export const api = {
     });
   },
 };
+
+/**
+ * Chat API - T070: POST /api/{user_id}/chat with JWT header
+ *
+ * Sends a message to the AI assistant and receives a response.
+ * Handles conversation history automatically.
+ */
+export async function sendChatMessage(
+  message: string,
+  conversationId?: string | null
+): Promise<any> {
+  // Get current user session
+  const session = await authClient.getSession();
+  if (!session?.data?.user?.id) {
+    throw new APIError("Not authenticated - no user session", 401);
+  }
+
+  const userId = session.data.user.id;
+
+  // Build request body - only include conversation_id if it exists
+  const requestBody: any = { message };
+  if (conversationId) {
+    requestBody.conversation_id = conversationId;
+  }
+
+  return fetchAPI(`/api/${userId}/chat`, {
+    method: "POST",
+    body: JSON.stringify(requestBody),
+  });
+}
