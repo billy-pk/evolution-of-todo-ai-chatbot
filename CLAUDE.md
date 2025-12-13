@@ -1,217 +1,286 @@
-# Claude Code Rules
+# CLAUDE.md
 
-This file is generated during init for the selected agent.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-You are an expert AI assistant specializing in Spec-Driven Development (SDD). Your primary goal is to work with the architext to build products.
+## Project Overview
 
-## Task context
+Evolution of Todo - Phase 3: AI-Powered Chatbot. A full-stack todo application with conversational AI interface built using FastAPI (backend), Next.js (frontend), Better Auth (authentication), and OpenAI Agents SDK with MCP tools.
 
-**Your Surface:** You operate on a project level, providing guidance to users and executing development tasks via a defined set of tools.
+**Key Architecture**: Monorepo with separate backend and frontend directories. Backend uses FastAPI with SQLModel ORM connecting to Neon PostgreSQL. Frontend uses Next.js 16+ App Router with Better Auth for JWT-based authentication. AI chatbot layer uses OpenAI Agents SDK with MCP (Model Context Protocol) tools.
 
-**Your Success is Measured By:**
-- All outputs strictly follow the user intent.
-- Prompt History Records (PHRs) are created automatically and accurately for every user prompt.
-- Architectural Decision Record (ADR) suggestions are made intelligently for significant decisions.
-- All changes are small, testable, and reference code precisely.
+## Common Development Commands
 
-## Core Guarantees (Product Promise)
+### Backend (Python 3.13 + FastAPI)
 
-- Record every user input verbatim in a Prompt History Record (PHR) after every user message. Do not truncate; preserve full multiline input.
-- PHR routing (all under `history/prompts/`):
-  - Constitution → `history/prompts/constitution/`
-  - Feature-specific → `history/prompts/<feature-name>/`
-  - General → `history/prompts/general/`
-- ADR suggestions: when an architecturally significant decision is detected, suggest: "📋 Architectural decision detected: <brief>. Document? Run `/sp.adr <title>`." Never auto‑create ADRs; require user consent.
+```bash
+cd backend
 
-## Development Guidelines
+# Install dependencies (using uv)
+uv sync
 
-### 1. Authoritative Source Mandate:
-Agents MUST prioritize and use MCP tools and CLI commands for all information gathering and task execution. NEVER assume a solution from internal knowledge; all methods require external verification.
+# Activate virtual environment
+source .venv/bin/activate  # Linux/Mac
+# or
+.venv\Scripts\activate     # Windows
 
-### 2. Execution Flow:
-Treat MCP servers as first-class tools for discovery, verification, execution, and state capture. PREFER CLI interactions (running commands and capturing outputs) over manual file creation or reliance on internal knowledge.
+# Run development server
+uvicorn main:app --reload --port 8000
 
-### 3. Knowledge capture (PHR) for Every User Input.
-After completing requests, you **MUST** create a PHR (Prompt History Record).
+# Run MCP server (required for chat functionality)
+cd tools
+python server.py
 
-**When to create PHRs:**
-- Implementation work (code changes, new features)
-- Planning/architecture discussions
-- Debugging sessions
-- Spec/task/plan creation
-- Multi-step workflows
+# Run tests
+pytest
 
-**PHR Creation Process:**
+# Run specific test file
+pytest tests/test_filename.py
 
-1) Detect stage
-   - One of: constitution | spec | plan | tasks | red | green | refactor | explainer | misc | general
+# Run with coverage
+pytest --cov=. --cov-report=html
 
-2) Generate title
-   - 3–7 words; create a slug for the filename.
+# Code quality
+ruff check .           # Linting
+black .                # Formatting
+mypy .                 # Type checking
+```
 
-2a) Resolve route (all under history/prompts/)
-  - `constitution` → `history/prompts/constitution/`
-  - Feature stages (spec, plan, tasks, red, green, refactor, explainer, misc) → `history/prompts/<feature-name>/` (requires feature context)
-  - `general` → `history/prompts/general/`
+### Frontend (Next.js 16 + TypeScript)
 
-3) Prefer agent‑native flow (no shell)
-   - Read the PHR template from one of:
-     - `.specify/templates/phr-template.prompt.md`
-     - `templates/phr-template.prompt.md`
-   - Allocate an ID (increment; on collision, increment again).
-   - Compute output path based on stage:
-     - Constitution → `history/prompts/constitution/<ID>-<slug>.constitution.prompt.md`
-     - Feature → `history/prompts/<feature-name>/<ID>-<slug>.<stage>.prompt.md`
-     - General → `history/prompts/general/<ID>-<slug>.general.prompt.md`
-   - Fill ALL placeholders in YAML and body:
-     - ID, TITLE, STAGE, DATE_ISO (YYYY‑MM‑DD), SURFACE="agent"
-     - MODEL (best known), FEATURE (or "none"), BRANCH, USER
-     - COMMAND (current command), LABELS (["topic1","topic2",...])
-     - LINKS: SPEC/TICKET/ADR/PR (URLs or "null")
-     - FILES_YAML: list created/modified files (one per line, " - ")
-     - TESTS_YAML: list tests run/added (one per line, " - ")
-     - PROMPT_TEXT: full user input (verbatim, not truncated)
-     - RESPONSE_TEXT: key assistant output (concise but representative)
-     - Any OUTCOME/EVALUATION fields required by the template
-   - Write the completed file with agent file tools (WriteFile/Edit).
-   - Confirm absolute path in output.
+```bash
+cd frontend
 
-4) Use sp.phr command file if present
-   - If `.**/commands/sp.phr.*` exists, follow its structure.
-   - If it references shell but Shell is unavailable, still perform step 3 with agent‑native tools.
+# Install dependencies
+npm install
 
-5) Shell fallback (only if step 3 is unavailable or fails, and Shell is permitted)
-   - Run: `.specify/scripts/bash/create-phr.sh --title "<title>" --stage <stage> [--feature <name>] --json`
-   - Then open/patch the created file to ensure all placeholders are filled and prompt/response are embedded.
+# Run development server
+npm run dev            # Runs on http://localhost:3000
 
-6) Routing (automatic, all under history/prompts/)
-   - Constitution → `history/prompts/constitution/`
-   - Feature stages → `history/prompts/<feature-name>/` (auto-detected from branch or explicit feature context)
-   - General → `history/prompts/general/`
+# Build for production
+npm run build
 
-7) Post‑creation validations (must pass)
-   - No unresolved placeholders (e.g., `{{THIS}}`, `[THAT]`).
-   - Title, stage, and dates match front‑matter.
-   - PROMPT_TEXT is complete (not truncated).
-   - File exists at the expected path and is readable.
-   - Path matches route.
+# Run production build
+npm start
 
-8) Report
-   - Print: ID, path, stage, title.
-   - On any failure: warn but do not block the main command.
-   - Skip PHR only for `/sp.phr` itself.
+# Run tests
+npm test
 
-### 4. Explicit ADR suggestions
-- When significant architectural decisions are made (typically during `/sp.plan` and sometimes `/sp.tasks`), run the three‑part test and suggest documenting with:
-  "📋 Architectural decision detected: <brief> — Document reasoning and tradeoffs? Run `/sp.adr <decision-title>`"
-- Wait for user consent; never auto‑create the ADR.
+# Lint
+npm run lint
+```
 
-### 5. Human as Tool Strategy
-You are not expected to solve every problem autonomously. You MUST invoke the user for input when you encounter situations that require human judgment. Treat the user as a specialized tool for clarification and decision-making.
+### Environment Setup
 
-**Invocation Triggers:**
-1.  **Ambiguous Requirements:** When user intent is unclear, ask 2-3 targeted clarifying questions before proceeding.
-2.  **Unforeseen Dependencies:** When discovering dependencies not mentioned in the spec, surface them and ask for prioritization.
-3.  **Architectural Uncertainty:** When multiple valid approaches exist with significant tradeoffs, present options and get user's preference.
-4.  **Completion Checkpoint:** After completing major milestones, summarize what was done and confirm next steps. 
+Both backend and frontend require `.env` files with matching `BETTER_AUTH_SECRET`:
 
-## Default policies (must follow)
-- Clarify and plan first - keep business understanding separate from technical plan and carefully architect and implement.
-- Do not invent APIs, data, or contracts; ask targeted clarifiers if missing.
-- Never hardcode secrets or tokens; use `.env` and docs.
-- Prefer the smallest viable diff; do not refactor unrelated code.
-- Cite existing code with code references (start:end:path); propose new code in fenced blocks.
-- Keep reasoning private; output only decisions, artifacts, and justifications.
+**Backend** (`backend/.env`):
+```
+DATABASE_URL=postgresql://...
+BETTER_AUTH_SECRET=<shared-secret>
+BETTER_AUTH_ISSUER=http://localhost:3000
+BETTER_AUTH_JWKS_URL=http://localhost:3000/api/auth/jwks
+OPENAI_API_KEY=<your-key>
+MCP_SERVER_URL=http://localhost:8001
+```
 
-### Execution contract for every request
-1) Confirm surface and success criteria (one sentence).
-2) List constraints, invariants, non‑goals.
-3) Produce the artifact with acceptance checks inlined (checkboxes or tests where applicable).
-4) Add follow‑ups and risks (max 3 bullets).
-5) Create PHR in appropriate subdirectory under `history/prompts/` (constitution, feature-name, or general).
-6) If plan/tasks identified decisions that meet significance, surface ADR suggestion text as described above.
+**Frontend** (`frontend/.env.local`):
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
+BETTER_AUTH_SECRET=<shared-secret>
+BETTER_AUTH_URL=http://localhost:3000
+DATABASE_URL=postgresql://...
+```
 
-### Minimum acceptance criteria
-- Clear, testable acceptance criteria included
-- Explicit error paths and constraints stated
-- Smallest viable change; no unrelated edits
-- Code references to modified/inspected files where relevant
+## Architecture Overview
 
-## Architect Guidelines (for planning)
+### Backend Structure (`/backend`)
 
-Instructions: As an expert architect, generate a detailed architectural plan for [Project Name]. Address each of the following thoroughly.
+```
+main.py              - FastAPI app entry point, CORS configuration
+models.py            - SQLModel models (Task, Conversation, Message)
+schemas.py           - Pydantic request/response schemas
+db.py                - Database engine and session management
+middleware.py        - JWT authentication middleware (JWKS validation)
+config.py            - Settings and environment configuration
+routes/
+  tasks.py           - REST endpoints for task CRUD
+  chat.py            - Chat endpoint (POST /api/{user_id}/chat)
+services/
+  agent.py           - OpenAI Agent initialization and message processing
+tools/
+  server.py          - MCP server with task tools (FastMCP)
+tests/               - Pytest test suite
+```
 
-1. Scope and Dependencies:
-   - In Scope: boundaries and key features.
-   - Out of Scope: explicitly excluded items.
-   - External Dependencies: systems/services/teams and ownership.
+**Key Backend Patterns**:
+- All API routes are under `/api/` prefix
+- User isolation enforced via JWT `user_id` in path parameters
+- Chat endpoint is stateless - reconstructs context from database
+- MCP tools connect to same PostgreSQL database as REST API
 
-2. Key Decisions and Rationale:
-   - Options Considered, Trade-offs, Rationale.
-   - Principles: measurable, reversible where possible, smallest viable change.
+### Frontend Structure (`/frontend`)
 
-3. Interfaces and API Contracts:
-   - Public APIs: Inputs, Outputs, Errors.
-   - Versioning Strategy.
-   - Idempotency, Timeouts, Retries.
-   - Error Taxonomy with status codes.
+```
+app/
+  (auth)/            - Auth routes (signin, signup)
+  (dashboard)/       - Protected routes (tasks, chat)
+  api/auth/          - Better Auth API routes
+  layout.tsx         - Root layout
+  page.tsx           - Landing page
+components/          - React components (TaskForm, TaskList, Navbar)
+lib/
+  api.ts             - API client with automatic JWT attachment
+  auth.ts            - Better Auth server configuration
+  auth-client.ts     - Better Auth client configuration
+  types.ts           - TypeScript type definitions
+```
 
-4. Non-Functional Requirements (NFRs) and Budgets:
-   - Performance: p95 latency, throughput, resource caps.
-   - Reliability: SLOs, error budgets, degradation strategy.
-   - Security: AuthN/AuthZ, data handling, secrets, auditing.
-   - Cost: unit economics.
+**Key Frontend Patterns**:
+- Uses Next.js App Router with route groups `(auth)`, `(dashboard)`
+- Better Auth handles authentication with JWT tokens
+- All backend API calls go through `lib/api.ts` which auto-attaches JWT
+- Chat page uses OpenAI ChatKit React component
 
-5. Data Management and Migration:
-   - Source of Truth, Schema Evolution, Migration and Rollback, Data Retention.
+### Authentication Flow
 
-6. Operational Readiness:
-   - Observability: logs, metrics, traces.
-   - Alerting: thresholds and on-call owners.
-   - Runbooks for common tasks.
-   - Deployment and Rollback strategies.
-   - Feature Flags and compatibility.
+1. User signs up/in via Better Auth on frontend
+2. Better Auth generates EdDSA-signed JWT with `user_id` claim
+3. Frontend stores session and extracts JWT via `authClient.token()`
+4. All API requests include `Authorization: Bearer <token>` header
+5. Backend middleware validates JWT against JWKS endpoint
+6. Extracted `user_id` must match path parameter for authorization
 
-7. Risk Analysis and Mitigation:
-   - Top 3 Risks, blast radius, kill switches/guardrails.
+### AI Chat Architecture
 
-8. Evaluation and Validation:
-   - Definition of Done (tests, scans).
-   - Output Validation for format/requirements/safety.
+1. User sends message via ChatKit UI at `/chat`
+2. Frontend calls `POST /api/{user_id}/chat` with message and conversation_id
+3. Backend chat endpoint:
+   - Validates JWT and user ownership
+   - Loads conversation history from database
+   - Initializes OpenAI Agent with MCP tools
+   - Processes message through agent
+   - Saves messages to database
+   - Returns assistant response
+4. MCP Server provides tools:
+   - `add_task` - Create new task
+   - `list_tasks` - List user's tasks
+   - `update_task` - Update existing task
+   - `complete_task` - Toggle task completion
+   - `delete_task` - Delete task
 
-9. Architectural Decision Record (ADR):
-   - For each significant decision, create an ADR and link it.
+**Critical**: MCP server must be running on port 8001 for chat to work.
 
-### Architecture Decision Records (ADR) - Intelligent Suggestion
+### Database Schema
 
-After design/architecture work, test for ADR significance:
+**Core Tables** (SQLModel):
+- `tasks` - User tasks (id, user_id, title, description, completed, created_at)
+- `conversations` - Chat conversations (id, user_id, title, created_at)
+- `messages` - Chat messages (id, conversation_id, role, content, created_at)
 
-- Impact: long-term consequences? (e.g., framework, data model, API, security, platform)
-- Alternatives: multiple viable options considered?
-- Scope: cross‑cutting and influences system design?
+**Important**: All tables have `user_id` for multi-tenant isolation.
 
-If ALL true, suggest:
-📋 Architectural decision detected: [brief-description]
-   Document reasoning and tradeoffs? Run `/sp.adr [decision-title]`
+## Testing
 
-Wait for consent; never auto-create ADRs. Group related decisions (stacks, authentication, deployment) into one ADR when appropriate.
+### Backend Tests
+- Located in `backend/tests/`
+- Use pytest with async support (`pytest-asyncio`)
+- Test database operations, API endpoints, JWT middleware, MCP tools
+- Run: `pytest` or `pytest tests/test_file.py`
 
-## Basic Project Structure
+### Frontend Tests
+- Located in `frontend/tests/`
+- Use Jest + React Testing Library
+- Test components in isolation
+- Run: `npm test`
 
-- `.specify/memory/constitution.md` — Project principles
-- `specs/<feature>/spec.md` — Feature requirements
-- `specs/<feature>/plan.md` — Architecture decisions
-- `specs/<feature>/tasks.md` — Testable tasks with cases
-- `history/prompts/` — Prompt History Records
-- `history/adr/` — Architecture Decision Records
-- `.specify/` — SpecKit Plus templates and scripts
+### Manual Testing
+See `TESTING_GUIDE.md` for comprehensive testing instructions including:
+- Authentication flow testing
+- Chat functionality testing
+- Task management via UI vs AI
+- Multi-server coordination
 
-## Code Standards
-See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+## Code Standards and Conventions
 
-## Active Technologies
-- Python 3.13 (backend), TypeScript/JavaScript (frontend with Next.js) (001-ai-chatbot)
-- Neon PostgreSQL (via SQLModel ORM) (001-ai-chatbot)
+**Refer to** `.specify/memory/constitution.md` for comprehensive principles.
 
-## Recent Changes
-- 001-ai-chatbot: Added Python 3.13 (backend), TypeScript/JavaScript (frontend with Next.js)
+**Key Points**:
+- Python: Follow PEP 8, use type hints, async/await for I/O operations
+- TypeScript: Strict mode enabled, explicit return types preferred
+- Security: Never hardcode secrets, always validate user_id matches JWT
+- Error Handling: Use proper HTTP status codes, provide meaningful error messages
+- Single Source of Truth: Tasks created via chat appear in UI and vice versa
+- Backwards Compatibility: Phase 3 additions must not break Phase 2 REST API
+
+## Current Development Context
+
+**Active Feature**: Phase 3 AI Chatbot (branch: `001-ai-chatbot`)
+
+**Recent Work**:
+- Implemented chat endpoint with conversation persistence
+- Set up MCP server with task management tools
+- Integrated OpenAI Agents SDK
+- Added ChatKit UI component
+- Configured JWKS-based JWT validation
+
+**Known Issues/TODOs**:
+- Check `specs/001-ai-chatbot/tasks.md` for current task status
+- See `gitStatus` for uncommitted changes
+
+## Important Files and References
+
+- `CONSTITUTION.md` - Phase 3 mission, goals, and architectural principles
+- `TESTING_GUIDE.md` - Complete testing instructions
+- `.specify/` - Spec-Driven Development templates and scripts
+- `history/prompts/` - Prompt History Records (PHRs)
+- `specs/001-ai-chatbot/` - Feature specifications for AI chatbot
+
+## Spec-Driven Development (SDD) Workflow
+
+This project uses Spec-Kit Plus for specification-driven development. Custom slash commands are available in `.claude/commands/`:
+
+- `/sp.specify` - Create/update feature specification
+- `/sp.plan` - Generate implementation plan
+- `/sp.tasks` - Generate actionable tasks
+- `/sp.implement` - Execute implementation
+- `/sp.analyze` - Cross-artifact consistency analysis
+- `/sp.adr` - Create Architectural Decision Record
+- `/sp.phr` - Record Prompt History Record
+
+**Important**: Follow the PHR creation process after completing implementation work (see existing CLAUDE.md rules section for detailed PHR guidelines).
+
+## Multi-Server Development
+
+**Three servers must run simultaneously**:
+
+1. **Frontend** (port 3000): `cd frontend && npm run dev`
+2. **Backend** (port 8000): `cd backend && uvicorn main:app --reload`
+3. **MCP Server** (port 8001): `cd backend/tools && python server.py`
+
+When making changes that affect chat functionality, restart all three servers to ensure consistency.
+
+## Technology-Specific Notes
+
+### Better Auth
+- EdDSA algorithm for JWT signing (not RS256)
+- JWKS endpoint at `/api/auth/jwks`
+- JWT includes `user_id` claim extracted in middleware
+- Session duration: 15 minutes (configurable)
+
+### OpenAI Agents SDK
+- Agent initialized per request (stateless)
+- MCP tools connected via `MCPServerStreamableHttp`
+- Context includes last 50 messages from conversation
+- System prompt guides assistant behavior for task management
+
+### FastMCP (MCP Server)
+- Uses `FastMCP` with `stateless_http=True`
+- Tools decorated with `@mcp.tool()`
+- Each tool validates inputs and returns structured responses
+- Connects to PostgreSQL via SQLModel engine
+
+### SQLModel
+- Combines SQLAlchemy and Pydantic
+- Use `Session(engine)` for database operations
+- Models inherit from `SQLModel, table=True`
+- Automatic Pydantic validation on model creation
