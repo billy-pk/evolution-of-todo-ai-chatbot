@@ -85,3 +85,7 @@ ehthumbs.db
 Thumbs.db
 Thumbs.db:encryptable
 desktop.ini
+
+# Test and Summary Files
+LIVE-TEST-RESULTS.md
+PHASE5-SUMMARY.md
