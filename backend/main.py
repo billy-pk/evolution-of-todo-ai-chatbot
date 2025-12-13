@@ -9,6 +9,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from middleware import JWTBearer
+import logging
 
 
 def create_app() -> FastAPI:
@@ -93,3 +94,14 @@ try:
     )
 except ImportError:
     pass  # Routes will be added later when they are created
+
+# T044: Include chat route (User Story 6 - Conversation History)
+# Chat endpoint already has JWTBearer in its dependencies
+try:
+    from routes import chat
+    app.include_router(chat.router)  # No need for prefix - already in router
+    logging.getLogger(__name__).info("Chat route registered successfully")
+except ImportError as e:
+    logging.getLogger(__name__).error(f"Failed to import chat route: {e}")
+except Exception as e:
+    logging.getLogger(__name__).error(f"Error registering chat route: {e}")
