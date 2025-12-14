@@ -19,7 +19,7 @@ export default function ChatPage() {
   const { control } = useChatKit({
     api: {
       clientToken: clientToken || '',
-      baseURL: '/api/chatkit',
+      baseURL: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chatkit`,
     },
     theme: {
       colorScheme: 'light',
@@ -77,7 +77,8 @@ export default function ChatPage() {
         }
 
         // Create ChatKit session with JWT
-        const response = await fetch('/api/chatkit/session', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${apiUrl}/api/chatkit/session`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
