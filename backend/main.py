@@ -11,6 +11,12 @@ from config import settings
 from middleware import JWTBearer
 import logging
 
+# Configure logging to show INFO level messages
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 
 def create_app() -> FastAPI:
     """

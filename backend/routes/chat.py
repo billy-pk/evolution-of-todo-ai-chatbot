@@ -14,6 +14,7 @@ from sqlmodel import Session, select
 from typing import Optional
 from uuid import UUID
 from datetime import datetime, UTC
+import time
 
 from db import get_session
 from schemas import ChatRequest, ChatResponse
@@ -95,11 +96,12 @@ async def chat(
             conversation_id=chat_request.conversation_id
         )
 
-        # Step 2: Load conversation history (last 100 messages)
+        # Step 2: Load conversation history (last 20 messages for context)
         message_history = await _load_conversation_history(
             session=session,
             conversation_id=conversation.id,
-            user_id=user_id
+            user_id=user_id,
+            limit=20  # Only load recent context for better performance
         )
 
         # Step 3: Save user message
@@ -115,11 +117,14 @@ async def chat(
         # Step 4: Call AI agent with history
         logger.info(f"Processing message for user {user_id}, conversation {conversation.id}")
 
+        start_time = time.time()
         agent_result = await process_message(
             user_id=user_id,
             message=chat_request.message,
             conversation_history=message_history
         )
+        agent_duration = time.time() - start_time
+        logger.info(f"⏱️ Agent processing took {agent_duration:.2f} seconds")
 
         # Step 5: Save assistant message
         assistant_message = Message(

@@ -24,6 +24,40 @@ os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)
 
+# Global MCP server instance (singleton pattern for connection reuse)
+_mcp_server = None
+_mcp_server_lock = None
+
+
+async def get_mcp_server():
+    """
+    Get or create the global MCP server instance.
+    Uses singleton pattern to reuse connection across requests.
+
+    Returns:
+        MCPServerStreamableHttp: Shared MCP server instance
+    """
+    global _mcp_server, _mcp_server_lock
+
+    # Initialize lock on first call
+    if _mcp_server_lock is None:
+        import asyncio
+        _mcp_server_lock = asyncio.Lock()
+
+    async with _mcp_server_lock:
+        if _mcp_server is None:
+            logger.info("🔌 Initializing MCP server connection (first time)")
+            _mcp_server = MCPServerStreamableHttp(
+                name="Task MCP Server",
+                params={
+                    "url": settings.MCP_SERVER_URL,  # http://localhost:8001/mcp
+                    "timeout": settings.OPENAI_API_TIMEOUT,
+                },
+                cache_tools_list=True,
+                max_retry_attempts=3,
+            )
+        return _mcp_server
+
 
 async def create_task_agent(user_id: str):
     """
@@ -35,18 +69,10 @@ async def create_task_agent(user_id: str):
     Returns:
         Tuple of (agent, server) for use in async context manager
     """
-    # Connect to MCP server
-    server = MCPServerStreamableHttp(
-        name="Task MCP Server",
-        params={
-            "url": settings.MCP_SERVER_URL,  # http://localhost:8000/mcp
-            "timeout": settings.OPENAI_API_TIMEOUT,
-        },
-        cache_tools_list=True,
-        max_retry_attempts=3,
-    )
+    # Get shared MCP server connection (singleton)
+    server = await get_mcp_server()
 
-    # Create agent with MCP tools
+    # Create agent with MCP tools (new agent per request for user_id isolation)
     agent = Agent(
         name="TaskAssistant",
         instructions=f"""You are a helpful assistant that manages todo tasks for users.
@@ -101,21 +127,34 @@ async def process_message(
             - tokens_used: Approximate token count
     """
     try:
+        import time
+
         # Create agent with MCP connection
+        start_total = time.time()
+        start_agent = time.time()
         agent, server = await create_task_agent(user_id)
+        agent_creation_time = time.time() - start_agent
+        logger.info(f"⏱️  Agent creation took {agent_creation_time:.2f}s")
 
         async with server:
             # Prepare messages for agent
+            start_prep = time.time()
             messages = []
             if conversation_history:
                 messages.extend(conversation_history)
             messages.append({"role": "user", "content": message})
+            prep_time = time.time() - start_prep
+            logger.info(f"⏱️  Message preparation took {prep_time:.3f}s")
 
             # Run agent
-            logger.info(f"Processing message for user {user_id}: {message[:100]}...")
+            logger.info(f"🤖 Processing message for user {user_id}: {message[:100]}...")
+            start_run = time.time()
             result = await Runner.run(agent, messages)
+            run_time = time.time() - start_run
+            logger.info(f"⏱️  Agent run took {run_time:.2f}s")
 
             # Extract tool calls from result
+            start_extract = time.time()
             tool_calls = []
             if hasattr(result, 'tool_calls') and result.tool_calls:
                 for tool_call in result.tool_calls:
@@ -124,6 +163,11 @@ async def process_message(
                         "parameters": tool_call.arguments,
                         "result": tool_call.result if hasattr(tool_call, 'result') else None
                     })
+                logger.info(f"🔧 Tools called: {[tc['tool'] for tc in tool_calls]}")
+            extract_time = time.time() - start_extract
+
+            total_time = time.time() - start_total
+            logger.info(f"⏱️  TOTAL process_message took {total_time:.2f}s (agent: {agent_creation_time:.2f}s, run: {run_time:.2f}s, extract: {extract_time:.3f}s)")
 
             # Return structured response
             return {
