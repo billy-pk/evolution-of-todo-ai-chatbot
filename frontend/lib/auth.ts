@@ -14,9 +14,13 @@ import { Pool } from "pg";
 export const auth = betterAuth({
   /**
    * PostgreSQL database connection for storing users and sessions
+   * Note: Node.js pg library needs explicit SSL config for Neon
    */
   database: new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL?.includes('neon.tech')
+      ? { rejectUnauthorized: false }
+      : undefined,
   }),
 
   /**
