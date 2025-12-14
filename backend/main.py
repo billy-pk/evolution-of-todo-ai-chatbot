@@ -117,7 +117,8 @@ except Exception as e:
 try:
     from routes import chatkit
     app.include_router(chatkit.router)
-    logging.getLogger(__name__).info("ChatKit route registered successfully")
+    app.include_router(chatkit.chatkit_router)
+    logging.getLogger(__name__).info("ChatKit routes registered successfully")
 except ImportError as e:
     logging.getLogger(__name__).error(f"Failed to import chatkit route: {e}")
 except Exception as e:

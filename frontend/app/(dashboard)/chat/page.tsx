@@ -3,186 +3,119 @@
 /**
  * Chat Page - AI-Powered Conversational Interface with OpenAI ChatKit
  *
- * Phase 10: ChatKit Integration (002-chatkit-refactor)
- *
- * Features:
- * - OpenAI ChatKit component for professional chat UI
- * - Message history display with streaming support
- * - Loading indicator with "thinking" status
- * - New conversation button
- * - Error handling for API responses
- * - Theme customization
- *
- * Success Criteria: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-048
+ * Integrates ChatKit component with custom FastAPI backend using clientToken auth
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { ChatKit, useChatKit, type ChatKitOptions } from '@openai/chatkit-react';
+import { useEffect, useState } from 'react';
+import { ChatKit, useChatKit } from '@openai/chatkit-react';
 import { authClient } from '@/lib/auth-client';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-interface ChatResponse {
-  conversation_id: string;
-  response: string;
-  tool_calls: any[];
-  messages: Message[];
-  metadata: {
-    model: string;
-    tokens_used: number;
-    conversation_message_count: number;
-  };
-}
-
-/**
- * Get JWT token from Better Auth for authenticated API requests
- */
-async function getAuthToken(): Promise<string | null> {
-  try {
-    const { data, error } = await authClient.token();
-    if (error || !data?.token) {
-      return null;
-    }
-    return data.token;
-  } catch (err) {
-    console.error('Error getting auth token:', err);
-    return null;
-  }
-}
-
 export default function ChatPage() {
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [clientToken, setClientToken] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize ChatKit with custom backend integration
-  const { control } = useChatKit({
-    api: {
-      async getClientSecret(existing) {
-        try {
-          // Get JWT token from Better Auth
-          const token = await getAuthToken();
-          if (!token) {
-            throw new Error('Not authenticated - no valid token');
-          }
-
-          const endpoint = existing ? '/api/chatkit/refresh' : '/api/chatkit/session';
-          const body = existing ? { token: existing } : {};
-
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
+  // Initialize ChatKit once we have a token
+  const { control } = useChatKit(
+    clientToken
+      ? {
+          api: {
+            clientToken: clientToken,
+            baseURL: '/api/chatkit',
+          },
+          theme: {
+            colorScheme: 'light',
+            color: {
+              accent: {
+                primary: '#2563eb', // blue-600
+                level: 2,
+              },
             },
-            body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(
-              errorData.detail || `Failed to create chat session (${response.status})`
-            );
-          }
-
-          const data = await response.json();
-          return data.client_secret;
-        } catch (err) {
-          console.error('Error getting client secret:', err);
-          throw err;
+            radius: 'round',
+            density: 'normal',
+            typography: { fontFamily: 'system-ui, -apple-system, sans-serif' },
+          },
+          composer: {
+            placeholder: 'Ask me to create tasks, list tasks, or help you manage your todo list...',
+          },
+          startScreen: {
+            greeting: 'Welcome to AI Assistant',
+            prompts: [
+              {
+                name: 'Create a task',
+                prompt: 'Create a new task for me',
+                icon: 'pencil',
+              },
+              {
+                name: 'List tasks',
+                prompt: 'Show me all my tasks',
+                icon: 'list',
+              },
+              {
+                name: 'Get help',
+                prompt: 'Help me organize my tasks',
+                icon: 'lightbulb',
+              },
+            ],
+          },
+          onError: ({ error: err }) => {
+            console.error('ChatKit error:', err);
+            setError(err?.message || 'An error occurred');
+          },
         }
-      },
-    },
-    theme: {
-      colorScheme: 'light',
-      color: {
-        accent: {
-          primary: '#2563eb', // blue-600
-          level: 2,
-        },
-      },
-      radius: 'round',
-      density: 'normal',
-      typography: { fontFamily: 'system-ui, -apple-system, sans-serif' },
-    },
-    composer: {
-      placeholder: 'Ask me to create tasks, list tasks, or help you manage your todo list...',
-      tools: [],
-    },
-    startScreen: {
-      greeting: 'Welcome to AI Assistant',
-      prompts: [
-        {
-          name: 'Create a task',
-          prompt: 'Create a new task for me',
-          icon: 'pencil',
-        },
-        {
-          name: 'List tasks',
-          prompt: 'Show me all my tasks',
-          icon: 'list',
-        },
-        {
-          name: 'Get help',
-          prompt: 'Help me organize my tasks',
-          icon: 'lightbulb',
-        },
-      ],
-    },
-    onError: ({ error: chatError }) => {
-      console.error('ChatKit error:', chatError);
-      handleError(chatError);
-    },
-    onThreadChange: ({ threadId }) => {
-      // Update conversation ID when thread changes
-      setConversationId(threadId || null);
-      if (threadId) {
-        // Save to localStorage for persistence
-        localStorage.setItem('lastThreadId', threadId);
-      }
-    },
-  } as ChatKitOptions);
+      : undefined
+  );
 
-  // Handle errors from ChatKit
-  const handleError = useCallback((err: any) => {
-    const errorMessage =
-      err?.status === 401
-        ? 'Authentication required. Please sign in again.'
-        : err?.status === 403
-        ? 'Access denied. You do not have permission to access this conversation.'
-        : err?.status === 404
-        ? 'Conversation not found.'
-        : err?.status === 429
-        ? 'Rate limit exceeded. Please wait a moment and try again.'
-        : err?.status === 500
-        ? 'Server error. Please try again later.'
-        : err?.message || 'Failed to send message. Please try again.';
-
-    setError(errorMessage);
-  }, []);
-
-  // Load last conversation from localStorage if available
+  // Get JWT token and create session
   useEffect(() => {
-    const lastThreadId = localStorage.getItem('lastThreadId');
-    if (lastThreadId) {
-      setConversationId(lastThreadId);
-    }
+    const initializeChat = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Get JWT from Better Auth
+        const { data, error: authError } = await authClient.token();
+
+        if (authError || !data?.token) {
+          throw new Error('Not authenticated - please sign in');
+        }
+
+        // Create ChatKit session with JWT
+        const response = await fetch('/api/chatkit/session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${data.token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to initialize chat (${response.status})`
+          );
+        }
+
+        const sessionData = await response.json();
+        setClientToken(sessionData.client_secret);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to initialize chat';
+        console.error('Chat initialization error:', err);
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeChat();
   }, []);
 
   return (
     <div className="flex flex-col h-screen bg-white">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">AI Assistant</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {conversationId
-              ? `Conversation: ${conversationId.slice(0, 8)}...`
-              : 'Start a new conversation'}
-          </p>
-        </div>
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <h1 className="text-2xl font-bold text-gray-900">AI Assistant</h1>
+        <p className="text-sm text-gray-500 mt-1">Chat with your AI-powered task manager</p>
       </div>
 
       {/* Error Display */}
@@ -198,10 +131,33 @@ export default function ChatPage() {
         </div>
       )}
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+            <p className="text-gray-600 mt-4">Initializing chat...</p>
+          </div>
+        </div>
+      )}
+
       {/* ChatKit Component */}
-      <div className="flex-1 overflow-hidden">
-        <ChatKit control={control} className="h-full w-full" />
-      </div>
+      {!isLoading && clientToken && (
+        <div className="flex-1 overflow-hidden">
+          <ChatKit control={control} className="h-full w-full" />
+        </div>
+      )}
+
+      {/* No Token State */}
+      {!isLoading && !clientToken && !error && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">Please sign in to use the chat</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
