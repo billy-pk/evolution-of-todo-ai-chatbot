@@ -15,56 +15,52 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize ChatKit once we have a token
-  const { control } = useChatKit(
-    clientToken
-      ? {
-          api: {
-            clientToken: clientToken,
-            baseURL: '/api/chatkit',
-          },
-          theme: {
-            colorScheme: 'light',
-            color: {
-              accent: {
-                primary: '#2563eb', // blue-600
-                level: 2,
-              },
-            },
-            radius: 'round',
-            density: 'normal',
-            typography: { fontFamily: 'system-ui, -apple-system, sans-serif' },
-          },
-          composer: {
-            placeholder: 'Ask me to create tasks, list tasks, or help you manage your todo list...',
-          },
-          startScreen: {
-            greeting: 'Welcome to AI Assistant',
-            prompts: [
-              {
-                name: 'Create a task',
-                prompt: 'Create a new task for me',
-                icon: 'pencil',
-              },
-              {
-                name: 'List tasks',
-                prompt: 'Show me all my tasks',
-                icon: 'list',
-              },
-              {
-                name: 'Get help',
-                prompt: 'Help me organize my tasks',
-                icon: 'lightbulb',
-              },
-            ],
-          },
-          onError: ({ error: err }) => {
-            console.error('ChatKit error:', err);
-            setError(err?.message || 'An error occurred');
-          },
-        }
-      : undefined
-  );
+  // Always pass a valid config to useChatKit (required)
+  const { control } = useChatKit({
+    api: {
+      clientToken: clientToken || '',
+      baseURL: '/api/chatkit',
+    },
+    theme: {
+      colorScheme: 'light',
+      color: {
+        accent: {
+          primary: '#2563eb', // blue-600
+          level: 2,
+        },
+      },
+      radius: 'round',
+      density: 'normal',
+      typography: { fontFamily: 'system-ui, -apple-system, sans-serif' },
+    },
+    composer: {
+      placeholder: 'Ask me to create tasks, list tasks, or help you manage your todo list...',
+    },
+    startScreen: {
+      greeting: 'Welcome to AI Assistant',
+      prompts: [
+        {
+          name: 'Create a task',
+          prompt: 'Create a new task for me',
+          icon: 'pencil',
+        },
+        {
+          name: 'List tasks',
+          prompt: 'Show me all my tasks',
+          icon: 'list',
+        },
+        {
+          name: 'Get help',
+          prompt: 'Help me organize my tasks',
+          icon: 'lightbulb',
+        },
+      ],
+    },
+    onError: ({ error: err }) => {
+      console.error('ChatKit error:', err);
+      setError(err?.message || 'An error occurred');
+    },
+  });
 
   // Get JWT token and create session
   useEffect(() => {
