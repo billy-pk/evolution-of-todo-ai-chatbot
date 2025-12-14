@@ -111,3 +111,14 @@ except ImportError as e:
     logging.getLogger(__name__).error(f"Failed to import chat route: {e}")
 except Exception as e:
     logging.getLogger(__name__).error(f"Error registering chat route: {e}")
+
+# ChatKit integration routes (no JWT middleware - handles auth internally)
+# These endpoints bridge ChatKit UI with our custom conversation database
+try:
+    from routes import chatkit
+    app.include_router(chatkit.router)
+    logging.getLogger(__name__).info("ChatKit route registered successfully")
+except ImportError as e:
+    logging.getLogger(__name__).error(f"Failed to import chatkit route: {e}")
+except Exception as e:
+    logging.getLogger(__name__).error(f"Error registering chatkit route: {e}")

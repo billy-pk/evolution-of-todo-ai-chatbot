@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ChatKit, useChatKit, type ChatKitOptions } from '@openai/chatkit-react';
+import { authClient } from '@/lib/auth-client';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -36,6 +37,22 @@ interface ChatResponse {
   };
 }
 
+/**
+ * Get JWT token from Better Auth for authenticated API requests
+ */
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const { data, error } = await authClient.token();
+    if (error || !data?.token) {
+      return null;
+    }
+    return data.token;
+  } catch (err) {
+    console.error('Error getting auth token:', err);
+    return null;
+  }
+}
+
 export default function ChatPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,21 +60,35 @@ export default function ChatPage() {
   // Initialize ChatKit with custom backend integration
   const { control } = useChatKit({
     api: {
-      async getClientSecret() {
-        // Since we're using a custom backend, we generate a simple session token
-        // In production, this would be an endpoint that validates JWT and returns a session token
+      async getClientSecret(existing) {
         try {
-          const response = await fetch('/api/chatkit/session', {
+          // Get JWT token from Better Auth
+          const token = await getAuthToken();
+          if (!token) {
+            throw new Error('Not authenticated - no valid token');
+          }
+
+          const endpoint = existing ? '/api/chatkit/refresh' : '/api/chatkit/session';
+          const body = existing ? { token: existing } : {};
+
+          const response = await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
           });
 
           if (!response.ok) {
-            throw new Error('Failed to create chat session');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+              errorData.detail || `Failed to create chat session (${response.status})`
+            );
           }
 
           const data = await response.json();
-          return data.client_secret || 'session_token';
+          return data.client_secret;
         } catch (err) {
           console.error('Error getting client secret:', err);
           throw err;

@@ -1,112 +1,265 @@
-# OpenAI ChatKit Integration Notes
+# OpenAI ChatKit Integration Implementation
 
 ## Current Status
 - ✅ Chat page refactored to use `@openai/chatkit-react` component
 - ✅ ChatKit configured with custom theme, prompts, and error handling
-- ⏳ Backend integration endpoints needed
+- ✅ Backend ChatKit integration endpoints implemented
+- ✅ Frontend authentication with Better Auth tokens
+- ⏳ End-to-end testing
 
-## What's Required for Full Integration
+## Completed Implementation
 
-### 1. ChatKit Session Endpoint
-The frontend expects a `POST /api/chatkit/session` endpoint that returns:
+### 1. Backend Endpoints (routes/chatkit.py)
+
+#### POST /api/chatkit/session
+Creates a new ChatKit session for the authenticated user.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/chatkit/session \
+  -H "Authorization: Bearer {jwt_token}" \
+  -H "Content-Type: application/json"
+```
+
+**Response:**
 ```json
 {
-  "client_secret": "session_token_string"
+  "client_secret": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "user_id": "user_uuid"
 }
 ```
 
-**Purpose**: ChatKit uses session tokens to manage authentication and state. This endpoint should:
-- Validate the user's JWT token
-- Create or retrieve a ChatKit session for the user
-- Return a secure session token
+**Purpose:**
+- Validates Better Auth JWT token
+- Creates HS256-signed session token with 30-minute expiry
+- Returns client_secret for ChatKit component
 
-### 2. ChatKit Message Adapter
-ChatKit uses OpenAI's Threads API format, but our backend uses a custom conversation model. We need to:
+#### POST /api/chatkit/refresh
+Refreshes an expired ChatKit session token.
 
-**Option A: Bridge Adapter**
-- Create a middleware that translates ChatKit's expected message format to our database schema
-- Map ChatKit threads → our conversations
-- Map ChatKit messages → our messages table
+**Request:**
+```json
+{
+  "token": "expired_client_secret"
+}
+```
 
-**Option B: Native Integration**
-- Implement ChatKit's expected API endpoints on the backend
-- Use our conversation database as the backing store
-- Handle message streaming and real-time updates
+**Response:**
+```json
+{
+  "client_secret": "new_eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "user_id": "user_uuid"
+}
+```
 
-### 3. Frontend Integration Points
+#### GET /api/chatkit/threads
+Lists all conversation threads (conversations) for the user.
 
-#### getClientSecret()
-Currently calls `/api/chatkit/session`. This should:
+**Response:**
+```json
+{
+  "threads": [
+    {
+      "id": "conversation_uuid",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "message_count": 5
+    }
+  ]
+}
+```
+
+#### POST /api/chatkit/threads
+Creates a new thread (conversation).
+
+**Response:**
+```json
+{
+  "id": "new_conversation_uuid",
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### GET /api/chatkit/threads/{thread_id}
+Retrieves a specific thread with all its messages.
+
+**Response:**
+```json
+{
+  "id": "conversation_uuid",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z",
+  "messages": [
+    {
+      "id": "message_uuid",
+      "role": "user",
+      "content": "Hello",
+      "created_at": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "response_uuid",
+      "role": "assistant",
+      "content": "Hi there!",
+      "created_at": "2024-01-01T00:00:01Z"
+    }
+  ]
+}
+```
+
+#### POST /api/chatkit/messages
+Sends a message to a thread and returns AI response.
+
+**Request:**
+```json
+{
+  "thread_id": "conversation_uuid",
+  "message": "Create a task to buy groceries"
+}
+```
+
+**Response:**
+```json
+{
+  "message_id": "message_uuid",
+  "response_id": "response_message_uuid",
+  "response": "I've created a task 'buy groceries' for you.",
+  "thread_id": "conversation_uuid"
+}
+```
+
+**Flow:**
+1. Validates ChatKit session token
+2. Saves user message to database
+3. Processes through AI agent with conversation history
+4. Saves assistant response to database
+5. Updates conversation timestamp
+6. Returns both messages
+
+### 2. Frontend Integration (chat/page.tsx)
+
+#### Authentication Flow
 ```typescript
-const response = await fetch('/api/chatkit/session', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}` // Include JWT from Better Auth
-  },
-});
+async function getAuthToken(): Promise<string | null> {
+  const { data, error } = await authClient.token();
+  return data?.token || null;
+}
 ```
 
-#### Theme Customization
-Currently set to light theme with blue accent. Can be updated via `ChatKitOptions.theme`
+#### Session Management
+```typescript
+getClientSecret: async (existing) => {
+  const token = await getAuthToken();
+  const endpoint = existing ? '/api/chatkit/refresh' : '/api/chatkit/session';
 
-#### Start Screen Prompts
-Configured with 3 default prompts:
-- "Create a task"
-- "List tasks"
-- "Get help"
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: existing ? JSON.stringify({ token: existing }) : undefined,
+  });
 
-These can be customized in the `startScreen.prompts` array
-
-## Architecture Overview
-
-```
-Frontend (ChatKit Component)
-    ↓
-ChatKit API Calls
-    ↓
-/api/chatkit/session → Backend Session Manager
-/api/chatkit/threads → Backend Thread/Conversation Manager
-/api/chatkit/messages → Backend Message Handler
-    ↓
-Custom Conversation Database (PostgreSQL)
+  return (await response.json()).client_secret;
+}
 ```
 
-## Key Differences from OpenAI's Threads API
+#### ChatKit Configuration
+- **Theme:** Light mode with blue accent (#2563eb)
+- **Start Screen Prompts:**
+  - "Create a task" (pencil icon)
+  - "List tasks" (list icon)
+  - "Get help" (lightbulb icon)
+- **Error Handling:** Custom error messages for HTTP status codes
+- **Persistence:** localStorage tracks last thread ID
 
-| Feature | OpenAI Threads | Our Implementation |
-|---------|---------------|--------------------|
-| Session Model | JWT-based | Custom sessions |
-| Storage | OpenAI servers | PostgreSQL (Neon) |
-| Persistence | Automatic | Explicit DB saves |
-| User Isolation | Thread ownership | user_id column |
-| Conversations | threads | conversations table |
-| Messages | messages | messages table |
+### 3. Architecture
 
-## Next Steps
+```
+ChatKit UI Component (React)
+    ↓
+getClientSecret() → /api/chatkit/session (with JWT)
+    ↓
+/api/chatkit/refresh (token renewal)
+    ↓
+User interactions stored in state
+    ↓
+Chat messages routed through AI Agent
+    ↓
+/api/chatkit/messages → Process message + AI response
+    ↓
+PostgreSQL (conversations + messages tables)
+```
 
-1. **Create Session Endpoint** (`POST /api/chatkit/session`)
-   - Validate JWT token
-   - Return ChatKit-compatible session token
-   - Duration: 15-30 minutes (matching Better Auth session)
+## Database Mapping
 
-2. **Implement ChatKit API Bridge**
-   - Add `/api/chatkit/threads` endpoint for thread management
-   - Add `/api/chatkit/messages` endpoint for message handling
-   - Map to existing conversation/message tables
+| ChatKit Concept | Our Database |
+|-----------------|--------------|
+| `client_secret` | JWT token with user_id + type |
+| `thread_id` | `conversation.id` |
+| `thread.messages` | `message` table records |
+| Thread created_at | `conversation.created_at` |
 
-3. **Test Integration**
-   - Verify ChatKit component renders properly
-   - Test message sending through ChatKit UI
-   - Confirm conversation persistence
-   - Check error handling
+## Authentication Security
 
-4. **Streaming Support** (Optional)
-   - Implement Server-Sent Events (SSE) for real-time message streaming
-   - Configure ChatKit for streaming responses
+**Session Token Format (HS256):**
+```python
+{
+  "user_id": "uuid",
+  "type": "chatkit_session",
+  "iat": 1704067200,
+  "exp": 1704069000  # 30 minutes
+}
+```
+
+**Signed with:** `settings.BETTER_AUTH_SECRET` (same as JWT validation)
+
+## Testing Checklist
+
+- [ ] Backend can start without import errors
+- [ ] ChatKit session endpoint returns valid token
+- [ ] Frontend can authenticate and get client_secret
+- [ ] ChatKit component renders properly
+- [ ] Message sending triggers `/api/chatkit/messages`
+- [ ] AI response appears in ChatKit UI
+- [ ] Conversation persistence works (reload page)
+- [ ] Error handling displays correctly
+- [ ] Token refresh works when expired
+- [ ] Multi-user isolation (different users, different conversations)
+
+## Known Limitations
+
+1. **No Real-Time Streaming:** Messages are processed completely before returning
+   - Could implement SSE for streaming responses (future enhancement)
+
+2. **No File Attachments:** ChatKit supports attachments, but not yet integrated
+   - Would require S3/blob storage implementation
+
+3. **Limited Entity Tagging:** ChatKit supports @-mentions, not yet implemented
+   - Would need entity search endpoint implementation
+
+## Future Enhancements
+
+1. **Response Streaming**
+   - Implement SSE for real-time token streaming
+   - Configuration: `streaming: true` in ChatKitOptions
+
+2. **File Attachments**
+   - Add attachment storage (S3/local disk)
+   - Implement ThreadItemConverter for attachment handling
+
+3. **Entity References**
+   - Add `/api/chatkit/entities/search` endpoint
+   - Enable @-mention support in composer
+
+4. **Conversation Management UI**
+   - Thread list sidebar
+   - Delete thread functionality
+   - Search/filter conversations
 
 ## References
 
 - [OpenAI ChatKit Documentation](https://github.com/openai/chatkit-js)
 - [ChatKit React Binding](https://github.com/openai/chatkit-js/tree/main/packages/react)
 - [ChatKit Advanced Samples](https://github.com/openai/openai-chatkit-advanced-samples)
+- [JWT Token Format](https://jwt.io/)
