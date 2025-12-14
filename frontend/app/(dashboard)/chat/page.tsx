@@ -3,24 +3,101 @@
 /**
  * Chat Page - AI-Powered Conversational Interface with OpenAI ChatKit
  *
- * Integrates ChatKit component with custom FastAPI backend using clientToken auth
+ * Integrates ChatKit component with custom FastAPI backend using CustomApiConfig
  */
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChatKit, useChatKit } from '@openai/chatkit-react';
 import { authClient } from '@/lib/auth-client';
 
+console.log('🔴 FILE LOADED - chat/page.tsx');
+
 export default function ChatPage() {
+  const [error, setError] = useState<string | null>(null);
   const [clientToken, setClientToken] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
-  // Always pass a valid config to useChatKit (required)
-  const { control } = useChatKit({
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  console.log('🟢 COMPONENT RENDERING, apiUrl:', apiUrl);
+  console.log('🟢 State:', { isLoading, hasToken: !!clientToken, initialized });
+
+  // Get session token on mount - simplified to avoid hydration issues
+  useEffect(() => {
+    if (initialized) return; // Prevent double execution in strict mode
+
+    setInitialized(true);
+    console.log('useEffect triggered!');
+
+    (async () => {
+      try {
+        console.log('Getting session token...');
+
+        // Get JWT from Better Auth
+        const { data, error: authError } = await authClient.token();
+        console.log('Better Auth token result:', { hasToken: !!data?.token, error: authError });
+
+        if (authError || !data?.token) {
+          throw new Error('Not authenticated - please sign in');
+        }
+
+        // Create ChatKit session with JWT
+        console.log('Calling session endpoint:', `${apiUrl}/api/chatkit/session`);
+        const response = await fetch(`${apiUrl}/api/chatkit/session`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${data.token}`,
+          },
+        });
+
+        console.log('Session endpoint response:', response.status, response.statusText);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to initialize chat (${response.status})`
+          );
+        }
+
+        const sessionData = await response.json();
+        console.log('Session data received, has client_secret:', !!sessionData.client_secret);
+        setClientToken(sessionData.client_secret);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to get session token';
+        console.error('Session token error:', err);
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
+
+  // Use CustomApiConfig for self-hosted backend
+  const chatKitResult = useChatKit({
     api: {
-      clientToken: clientToken || '',
-      baseURL: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chatkit`,
+      url: `${apiUrl}/chatkit`,
+      domainKey: 'task-manager',
+      fetch: async (url: string, options: RequestInit = {}) => {
+        console.log('ChatKit fetch called:', url, options);
+
+        // Add Authorization header with session token if available
+        const headers = new Headers(options.headers);
+        if (clientToken) {
+          headers.set('Authorization', `Bearer ${clientToken}`);
+          console.log('Added Authorization header with token');
+        } else {
+          console.warn('No clientToken available yet');
+        }
+
+        return fetch(url, {
+          ...options,
+          headers,
+        });
+      },
     },
+    initialThread: null,  // Start with new thread view
     theme: {
       colorScheme: 'light',
       color: {
@@ -58,54 +135,18 @@ export default function ChatPage() {
     },
     onError: ({ error: err }) => {
       console.error('ChatKit error:', err);
+      console.error('Error details:', JSON.stringify(err, null, 2));
       setError(err?.message || 'An error occurred');
     },
   });
 
-  // Get JWT token and create session
-  useEffect(() => {
-    const initializeChat = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  console.log('ChatKit isLoading:', isLoading, 'clientToken present:', !!clientToken);
+  console.log('Will render ChatKit?', !isLoading && clientToken);
 
-        // Get JWT from Better Auth
-        const { data, error: authError } = await authClient.token();
+  console.log('useChatKit result:', chatKitResult);
+  console.log('control object:', chatKitResult.control);
 
-        if (authError || !data?.token) {
-          throw new Error('Not authenticated - please sign in');
-        }
-
-        // Create ChatKit session with JWT
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const response = await fetch(`${apiUrl}/api/chatkit/session`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${data.token}`,
-          },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.detail || `Failed to initialize chat (${response.status})`
-          );
-        }
-
-        const sessionData = await response.json();
-        setClientToken(sessionData.client_secret);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to initialize chat';
-        console.error('Chat initialization error:', err);
-        setError(message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeChat();
-  }, []);
+  const { control, setThreadId } = chatKitResult;
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -141,17 +182,21 @@ export default function ChatPage() {
       )}
 
       {/* ChatKit Component */}
-      {!isLoading && clientToken && (
+      {!isLoading && clientToken ? (
         <div className="flex-1 overflow-hidden">
-          <ChatKit control={control} className="h-full w-full" />
+          {console.log('Rendering ChatKit component now...')}
+          <ChatKit
+            control={control}
+            className="h-full w-full"
+          />
         </div>
-      )}
-
-      {/* No Token State */}
-      {!isLoading && !clientToken && !error && (
+      ) : (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-gray-600">Please sign in to use the chat</p>
+            {console.log('NOT rendering ChatKit:', { isLoading, hasToken: !!clientToken })}
+            <p className="text-gray-600">
+              {isLoading ? 'Loading...' : 'Please wait...'}
+            </p>
           </div>
         </div>
       )}

@@ -13,7 +13,7 @@ Endpoints:
 """
 
 from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from sqlmodel import Session, select
 from datetime import datetime, UTC, timedelta
 import json
@@ -25,14 +25,23 @@ import asyncio
 from db import get_session
 from config import settings
 from models import Conversation, Message
-from middleware import JWTBearer
+from middleware import JWTBearer, verify_token
 from schemas import ChatRequest, ChatResponse
+from services.chatkit_server import (
+    TaskManagerChatKitServer,
+    SimpleMemoryStore,
+)
+from chatkit.server import StreamingResult
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chatkit", tags=["chatkit"])
 # ChatKit protocol endpoint (no /api prefix)
 chatkit_router = APIRouter(tags=["chatkit-protocol"])
+
+# Initialize ChatKit server instance
+data_store = SimpleMemoryStore()
+chatkit_server = TaskManagerChatKitServer(data_store)
 
 
 class ChatKitSessionManager:
@@ -116,19 +125,10 @@ async def create_chatkit_session(request: Request):
 
         token = auth_header[7:]  # Remove "Bearer " prefix
 
-        # Validate JWT using JWTBearer logic
-        try:
-            payload = jwt.decode(
-                token,
-                settings.BETTER_AUTH_SECRET,
-                algorithms=["HS256"]
-            )
-        except jwt.InvalidTokenError:
-            raise HTTPException(status_code=401, detail="Invalid token")
-
-        user_id = payload.get("sub") or payload.get("user_id")
+        # Validate JWT using JWKS (EdDSA) validation from middleware
+        user_id = verify_token(token)
         if not user_id:
-            raise HTTPException(status_code=401, detail="Token missing user_id")
+            raise HTTPException(status_code=401, detail="Invalid token")
 
         # Create ChatKit session
         client_secret, _ = ChatKitSessionManager.create_session_token(user_id)
@@ -549,20 +549,15 @@ async def add_message(
 # ============================================================================
 
 @chatkit_router.post("/chatkit")
-async def chatkit_endpoint(request: Request, session: Session = Depends(get_session)):
+async def chatkit_endpoint(request: Request):
     """
     Main ChatKit protocol endpoint.
 
-    This endpoint receives requests from the ChatKit.js client and handles
-    the ChatKit protocol for thread and message management.
+    This endpoint receives requests from the ChatKit.js client and forwards
+    them to the ChatKitServer for processing.
 
-    Expected request format from ChatKit.js client:
-    {
-      "clientToken": "session_token",
-      "method": "POST|GET|DELETE",
-      "path": "/threads|/threads/{id}/messages",
-      "body": {...}
-    }
+    All communication happens through a single POST endpoint that returns
+    either JSON directly or streams SSE JSON events.
     """
     try:
         logger.info("=== ChatKit endpoint received request ===")
@@ -580,131 +575,24 @@ async def chatkit_endpoint(request: Request, session: Session = Depends(get_sess
             logger.warning("Invalid session token in ChatKit request")
             raise HTTPException(status_code=401, detail="Invalid session token")
 
-        # Parse request body
-        try:
-            body = await request.json()
-        except:
-            body = {}
+        logger.info(f"ChatKit request authenticated for user {user_id}")
 
-        logger.info(f"ChatKit request for user {user_id}: {body}")
+        # Create context with user_id for authorization
+        context = {"user_id": user_id}
 
-        # Handle different request types based on the path
-        # ChatKit sends messages via POST to /threads/{threadId}/messages
+        # Get request body
+        body = await request.body()
 
-        # For now, we'll handle the simple message format
-        if body.get("messages"):
-            # This is a message sending request
-            thread_id = body.get("threadId")
-            messages = body.get("messages", [])
+        # Process request through ChatKit server
+        result = await chatkit_server.process(body, context)
 
-            if not thread_id or not messages:
-                raise HTTPException(status_code=400, detail="Missing threadId or messages")
-
-            # Get the last user message
-            last_message = next(
-                (m for m in reversed(messages) if m.get("role") == "user"),
-                None
-            )
-
-            if not last_message:
-                raise HTTPException(status_code=400, detail="No user message found")
-
-            message_text = last_message.get("content", "")
-
-            logger.info(f"Processing message for thread {thread_id}: {message_text}")
-
-            # Verify conversation ownership
-            stmt = select(Conversation).where(
-                Conversation.id == thread_id,
-                Conversation.user_id == user_id
-            )
-            conversation = session.exec(stmt).first()
-
-            if not conversation:
-                raise HTTPException(status_code=404, detail="Thread not found")
-
-            # Import here to avoid circular imports
-            from services.agent import process_message
-
-            # Load conversation history
-            msg_statement = (
-                select(Message)
-                .where(Message.conversation_id == thread_id)
-                .order_by(Message.created_at.asc())
-            )
-            existing_messages = session.exec(msg_statement).all()
-
-            message_history = [
-                {
-                    "role": msg.role,
-                    "content": msg.content
-                }
-                for msg in existing_messages
-            ]
-
-            # Save user message
-            user_message = Message(
-                conversation_id=thread_id,
-                user_id=user_id,
-                role="user",
-                content=message_text
-            )
-            session.add(user_message)
-            session.commit()
-            session.refresh(user_message)
-
-            # Process through AI agent
-            try:
-                agent_result = await process_message(
-                    user_id=user_id,
-                    message=message_text,
-                    conversation_history=message_history
-                )
-
-                # Save assistant response
-                assistant_message = Message(
-                    conversation_id=thread_id,
-                    user_id=user_id,
-                    role="assistant",
-                    content=agent_result["response"],
-                    tool_calls=str(agent_result.get("tool_calls", []))
-                )
-                session.add(assistant_message)
-
-                # Update conversation timestamp
-                conversation.updated_at = datetime.now(UTC)
-                session.add(conversation)
-                session.commit()
-                session.refresh(assistant_message)
-
-                # Return response in ChatKit format
-                return {
-                    "threadId": str(thread_id),
-                    "messages": [
-                        {
-                            "id": str(user_message.id),
-                            "role": "user",
-                            "content": message_text,
-                            "createdAt": user_message.created_at.isoformat()
-                        },
-                        {
-                            "id": str(assistant_message.id),
-                            "role": "assistant",
-                            "content": agent_result["response"],
-                            "createdAt": assistant_message.created_at.isoformat()
-                        }
-                    ]
-                }
-
-            except Exception as agent_error:
-                logger.error(f"Error processing message through agent: {str(agent_error)}", exc_info=True)
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to process message: {str(agent_error)}"
-                )
+        # Return streaming or JSON response
+        if isinstance(result, StreamingResult):
+            logger.info("Returning streaming response")
+            return StreamingResponse(result, media_type="text/event-stream")
         else:
-            # For other request types, return a simple response
-            return {"status": "ok", "message": "ChatKit endpoint ready"}
+            logger.info("Returning JSON response")
+            return Response(content=result.json, media_type="application/json")
 
     except HTTPException:
         raise
@@ -712,5 +600,5 @@ async def chatkit_endpoint(request: Request, session: Session = Depends(get_sess
         logger.error(f"Error in ChatKit endpoint: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="ChatKit endpoint error"
+            detail=f"ChatKit endpoint error: {str(e)}"
         )
