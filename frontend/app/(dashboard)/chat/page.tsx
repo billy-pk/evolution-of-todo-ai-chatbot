@@ -3,96 +3,56 @@
 /**
  * Chat Page - AI-Powered Conversational Interface with OpenAI ChatKit
  *
- * Integrates ChatKit component with custom FastAPI backend using CustomApiConfig
+ * Integrates ChatKit component with custom FastAPI backend using getClientSecret
  */
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from '@/lib/auth-client';
 import { ChatKit, useChatKit } from '@openai/chatkit-react';
 import { authClient } from '@/lib/auth-client';
 
-console.log('🔴 FILE LOADED - chat/page.tsx');
-
 export default function ChatPage() {
+  const { data: session, isPending } = useSession();
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [clientToken, setClientToken] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-  console.log('🟢 COMPONENT RENDERING, apiUrl:', apiUrl);
-  console.log('🟢 State:', { isLoading, hasToken: !!clientToken, initialized });
-
-  // Get session token on mount - simplified to avoid hydration issues
+  // Redirect to signin if not authenticated
   useEffect(() => {
-    if (initialized) return; // Prevent double execution in strict mode
+    if (!isPending && !session?.user) {
+      router.push('/signin');
+    }
+  }, [session, isPending, router]);
 
-    setInitialized(true);
-    console.log('useEffect triggered!');
+  // ChatKit configuration for custom backend
+  const { control } = useChatKit({
+    api: {
+      // Custom backend URL - ChatKit will POST requests here
+      url: `${apiUrl}/chatkit`,
+      // Domain key - required for production, skipped on localhost
+      domainKey: process.env.NEXT_PUBLIC_CHATKIT_DOMAIN_KEY || 'localhost-dev',
+      // Custom fetch to inject our auth headers
+      async fetch(input: RequestInfo | URL, init?: RequestInit) {
+        console.log('🔵 ChatKit: Custom fetch called', { url: input });
 
-    (async () => {
-      try {
-        console.log('Getting session token...');
-
-        // Get JWT from Better Auth
+        // Get Better Auth JWT for authenticating with our backend
         const { data, error: authError } = await authClient.token();
-        console.log('Better Auth token result:', { hasToken: !!data?.token, error: authError });
-
         if (authError || !data?.token) {
+          console.error('ChatKit: Auth error', authError);
           throw new Error('Not authenticated - please sign in');
         }
 
-        // Create ChatKit session with JWT
-        console.log('Calling session endpoint:', `${apiUrl}/api/chatkit/session`);
-        const response = await fetch(`${apiUrl}/api/chatkit/session`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${data.token}`,
-          },
-        });
+        // Inject auth header
+        const headers = {
+          ...init?.headers,
+          'Authorization': `Bearer ${data.token}`,
+        };
 
-        console.log('Session endpoint response:', response.status, response.statusText);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.detail || `Failed to initialize chat (${response.status})`
-          );
-        }
-
-        const sessionData = await response.json();
-        console.log('Session data received, has client_secret:', !!sessionData.client_secret);
-        setClientToken(sessionData.client_secret);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to get session token';
-        console.error('Session token error:', err);
-        setError(message);
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, []);
-
-  // Use CustomApiConfig for self-hosted backend
-  const chatKitResult = useChatKit({
-    api: {
-      url: `${apiUrl}/chatkit`,
-      domainKey: 'task-manager',
-      fetch: async (url: string, options: RequestInit = {}) => {
-        console.log('ChatKit fetch called:', url, options);
-
-        // Add Authorization header with session token if available
-        const headers = new Headers(options.headers);
-        if (clientToken) {
-          headers.set('Authorization', `Bearer ${clientToken}`);
-          console.log('Added Authorization header with token');
-        } else {
-          console.warn('No clientToken available yet');
-        }
-
-        return fetch(url, {
-          ...options,
+        console.log('ChatKit: Fetching with auth header');
+        return fetch(input, {
+          ...init,
           headers,
         });
       },
@@ -117,17 +77,17 @@ export default function ChatPage() {
       greeting: 'Welcome to AI Assistant',
       prompts: [
         {
-          name: 'Create a task',
+          label: 'Create a task',
           prompt: 'Create a new task for me',
-          icon: 'pencil',
+          icon: 'notebook-pencil',
         },
         {
-          name: 'List tasks',
+          label: 'List tasks',
           prompt: 'Show me all my tasks',
-          icon: 'list',
+          icon: 'search',
         },
         {
-          name: 'Get help',
+          label: 'Get help',
           prompt: 'Help me organize my tasks',
           icon: 'lightbulb',
         },
@@ -135,30 +95,43 @@ export default function ChatPage() {
     },
     onError: ({ error: err }) => {
       console.error('ChatKit error:', err);
-      console.error('Error details:', JSON.stringify(err, null, 2));
       setError(err?.message || 'An error occurred');
+    },
+    onThreadChange: ({ threadId }) => {
+      console.log('ChatKit: Thread changed', { threadId });
     },
   });
 
-  console.log('ChatKit isLoading:', isLoading, 'clientToken present:', !!clientToken);
-  console.log('Will render ChatKit?', !isLoading && clientToken);
+  // Show loading state while checking authentication
+  if (isPending) {
+    return (
+      <div className="flex flex-col h-screen bg-white items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block">
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          </div>
+          <p className="text-gray-600 mt-4">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
-  console.log('useChatKit result:', chatKitResult);
-  console.log('control object:', chatKitResult.control);
-
-  const { control, setThreadId } = chatKitResult;
+  // Don't render ChatKit if not authenticated (will redirect)
+  if (!session?.user) {
+    return null;
+  }
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0 rounded-t-lg">
         <h1 className="text-2xl font-bold text-gray-900">AI Assistant</h1>
         <p className="text-sm text-gray-500 mt-1">Chat with your AI-powered task manager</p>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
           <p className="text-red-800 text-sm">{error}</p>
           <button
             onClick={() => setError(null)}
@@ -169,37 +142,17 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="inline-block">
-              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            </div>
-            <p className="text-gray-600 mt-4">Initializing chat...</p>
-          </div>
-        </div>
-      )}
-
       {/* ChatKit Component */}
-      {!isLoading && clientToken ? (
-        <div className="flex-1 overflow-hidden">
-          {console.log('Rendering ChatKit component now...')}
-          <ChatKit
-            control={control}
-            className="h-full w-full"
-          />
-        </div>
-      ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            {console.log('NOT rendering ChatKit:', { isLoading, hasToken: !!clientToken })}
-            <p className="text-gray-600">
-              {isLoading ? 'Loading...' : 'Please wait...'}
-            </p>
-          </div>
-        </div>
-      )}
+      <div
+        className="flex-1 overflow-hidden"
+        style={{ minHeight: '500px', height: '100%' }}
+      >
+        <ChatKit
+          control={control}
+          className="w-full h-full"
+          style={{ width: '100%', height: '100%', minHeight: '500px', display: 'block' }}
+        />
+      </div>
     </div>
   );
 }

@@ -27,11 +27,8 @@ from config import settings
 from models import Conversation, Message
 from middleware import JWTBearer, verify_token
 from schemas import ChatRequest, ChatResponse
-from services.chatkit_server import (
-    TaskManagerChatKitServer,
-    SimpleMemoryStore,
-)
-from chatkit.server import StreamingResult
+from services.chatkit_server import TaskManagerChatKitServer, SimpleMemoryStore
+from chatkit.server import StreamingResult, NonStreamingResult
 
 logger = logging.getLogger(__name__)
 
@@ -562,18 +559,20 @@ async def chatkit_endpoint(request: Request):
     try:
         logger.info("=== ChatKit endpoint received request ===")
 
-        # Get client token from headers
+        # Get JWT token from headers (Better Auth JWT, not ChatKit session)
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
             logger.warning("Missing Authorization header in ChatKit request")
             raise HTTPException(status_code=401, detail="Missing Authorization header")
 
         token = auth_header[7:]  # Remove "Bearer " prefix
-        user_id = ChatKitSessionManager.verify_session_token(token)
+
+        # Validate using JWKS (EdDSA) - same as other endpoints
+        user_id = verify_token(token)
 
         if not user_id:
-            logger.warning("Invalid session token in ChatKit request")
-            raise HTTPException(status_code=401, detail="Invalid session token")
+            logger.warning("Invalid JWT token in ChatKit request")
+            raise HTTPException(status_code=401, detail="Invalid token")
 
         logger.info(f"ChatKit request authenticated for user {user_id}")
 
@@ -590,9 +589,13 @@ async def chatkit_endpoint(request: Request):
         if isinstance(result, StreamingResult):
             logger.info("Returning streaming response")
             return StreamingResponse(result, media_type="text/event-stream")
-        else:
+        elif isinstance(result, NonStreamingResult):
             logger.info("Returning JSON response")
             return Response(content=result.json, media_type="application/json")
+        else:
+            # Fallback for any other response type
+            logger.info(f"Returning response of type {type(result)}")
+            return Response(content=str(result), media_type="application/json")
 
     except HTTPException:
         raise
