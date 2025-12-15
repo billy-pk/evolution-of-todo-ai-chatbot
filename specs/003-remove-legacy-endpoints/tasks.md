@@ -26,10 +26,10 @@
 
 **Purpose**: Verify prerequisites and prepare for removal
 
-- [ ] T001 Verify chat interface is accessible at frontend/app/(dashboard)/chat/page.tsx
-- [ ] T002 Verify MCP server tools exist at backend/tools/server.py with 5 task tools
-- [ ] T003 [P] Create backup of current git state with `git stash` or commit current work
-- [ ] T004 [P] Document current task count in database for integrity verification
+- [x] T001 Verify chat interface is accessible at frontend/app/(dashboard)/chat/page.tsx
+- [x] T002 Verify MCP server tools exist at backend/tools/server.py with 5 task tools
+- [x] T003 [P] Create backup of current git state with `git stash` or commit current work
+- [x] T004 [P] Document current task count in database for integrity verification
 
 **Checkpoint**: Prerequisites verified - safe to proceed with removal
 
@@ -51,18 +51,18 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Delete backend/routes/tasks.py file (271 lines)
-- [ ] T006 [US1] Remove tasks import from backend/main.py (lines 95-96: "from routes import tasks")
-- [ ] T007 [US1] Remove tasks router inclusion from backend/main.py (lines 96-101: app.include_router block)
-- [ ] T008 [US1] Restart backend server with `cd backend && uvicorn main:app --reload`
+- [x] T005 [US1] Delete backend/routes/tasks.py file (271 lines)
+- [x] T006 [US1] Remove tasks import from backend/main.py (lines 95-96: "from routes import tasks")
+- [x] T007 [US1] Remove tasks router inclusion from backend/main.py (lines 96-101: app.include_router block)
+- [x] T008 [US1] Restart backend server with `cd backend && uvicorn main:app --reload`
 
 ### Verification for User Story 1
 
-- [ ] T009 [US1] Verify GET /api/test-user/tasks returns 404 Not Found
-- [ ] T010 [US1] Verify POST /api/test-user/tasks returns 404 Not Found
-- [ ] T011 [US1] Verify PUT /api/test-user/tasks/some-id returns 404 Not Found
-- [ ] T012 [US1] Verify PATCH /api/test-user/tasks/some-id/complete returns 404 Not Found
-- [ ] T013 [US1] Verify DELETE /api/test-user/tasks/some-id returns 404 Not Found
+- [x] T009 [US1] Verify GET /api/test-user/tasks returns 404 Not Found
+- [x] T010 [US1] Verify POST /api/test-user/tasks returns 404 Not Found
+- [x] T011 [US1] Verify PUT /api/test-user/tasks/some-id returns 404 Not Found
+- [x] T012 [US1] Verify PATCH /api/test-user/tasks/some-id/complete returns 404 Not Found
+- [x] T013 [US1] Verify DELETE /api/test-user/tasks/some-id returns 404 Not Found
 - [ ] T014 [US1] Test chat interface: Create task via "add a task to buy milk"
 - [ ] T015 [US1] Test chat interface: List tasks via "list my tasks"
 - [ ] T016 [US1] Test chat interface: Update task via "update task to buy milk and bread"
@@ -81,24 +81,24 @@
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Delete frontend/app/(dashboard)/tasks/page.tsx file (310 lines)
-- [ ] T020 [P] [US2] Delete frontend/components/TaskForm.tsx file (~100 lines)
-- [ ] T021 [P] [US2] Delete frontend/components/TaskList.tsx file (~80 lines)
-- [ ] T022 [P] [US2] Delete frontend/components/TaskItem.tsx file (~120 lines)
-- [ ] T023 [US2] Check frontend/components/Navbar.tsx for /tasks link and remove if present
-- [ ] T024 [US2] Restart frontend server with `cd frontend && npm run dev`
+- [x] T019 [P] [US2] Delete frontend/app/(dashboard)/tasks/page.tsx file (310 lines)
+- [x] T020 [P] [US2] Delete frontend/components/TaskForm.tsx file (~100 lines)
+- [x] T021 [P] [US2] Delete frontend/components/TaskList.tsx file (~80 lines)
+- [x] T022 [P] [US2] Delete frontend/components/TaskItem.tsx file (~120 lines)
+- [x] T023 [US2] Check frontend/components/Navbar.tsx for /tasks link and remove if present
+- [x] T024 [US2] Restart frontend server with `cd frontend && npm run dev`
 
 ### Verification for User Story 2
 
-- [ ] T025 [US2] Navigate to http://localhost:3000/tasks and verify 404 page
-- [ ] T026 [US2] Navigate to http://localhost:3000/chat and verify chat interface loads
-- [ ] T027 [US2] Verify no TaskForm/TaskList/TaskItem imports exist with `grep -r "TaskForm\|TaskList\|TaskItem" frontend/`
-- [ ] T028 [US2] Test chat UI: Sign in and access chat interface
-- [ ] T029 [US2] Test chat UI: Create task conversationally
-- [ ] T030 [US2] Test chat UI: List tasks conversationally
-- [ ] T031 [US2] Test chat UI: Update task conversationally
-- [ ] T032 [US2] Test chat UI: Complete task conversationally
-- [ ] T033 [US2] Test chat UI: Delete task conversationally
+- [x] T025 [US2] Navigate to http://localhost:3000/tasks and verify 404 page
+- [x] T026 [US2] Navigate to http://localhost:3000/chat and verify chat interface loads
+- [x] T027 [US2] Verify no TaskForm/TaskList/TaskItem imports exist with `grep -r "TaskForm\|TaskList\|TaskItem" frontend/`
+- [x] T028 [US2] Test chat UI: Sign in and access chat interface
+- [x] T029 [US2] Test chat UI: Create task conversationally
+- [x] T030 [US2] Test chat UI: List tasks conversationally
+- [x] T031 [US2] Test chat UI: Update task conversationally
+- [x] T032 [US2] Test chat UI: Complete task conversationally
+- [x] T033 [US2] Test chat UI: Delete task conversationally
 
 **Checkpoint**: User Story 2 complete - frontend UI removed, chat interface is sole task management UI
 
@@ -112,24 +112,24 @@
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Read frontend/lib/api.ts to identify task API methods
-- [ ] T035 [US3] Remove createTask method from frontend/lib/api.ts
-- [ ] T036 [US3] Remove listTasks method from frontend/lib/api.ts
-- [ ] T037 [US3] Remove updateTask method from frontend/lib/api.ts
-- [ ] T038 [US3] Remove deleteTask method from frontend/lib/api.ts
-- [ ] T039 [US3] Remove toggleComplete method from frontend/lib/api.ts
-- [ ] T040 [US3] Verify apiRequest helper function remains (used by chat API)
-- [ ] T041 [US3] Verify authentication-related API methods remain intact
+- [x] T034 [US3] Read frontend/lib/api.ts to identify task API methods
+- [x] T035 [US3] Remove createTask method from frontend/lib/api.ts
+- [x] T036 [US3] Remove listTasks method from frontend/lib/api.ts
+- [x] T037 [US3] Remove updateTask method from frontend/lib/api.ts
+- [x] T038 [US3] Remove deleteTask method from frontend/lib/api.ts
+- [x] T039 [US3] Remove toggleComplete method from frontend/lib/api.ts
+- [x] T040 [US3] Verify apiRequest helper function remains (used by chat API)
+- [x] T041 [US3] Verify authentication-related API methods remain intact
 
 ### Verification for User Story 3
 
-- [ ] T042 [US3] Search for createTask usage with `grep -r "api.createTask" frontend/` (expect no results)
-- [ ] T043 [US3] Search for listTasks usage with `grep -r "api.listTasks" frontend/` (expect no results)
-- [ ] T044 [US3] Search for updateTask usage with `grep -r "api.updateTask" frontend/` (expect no results)
-- [ ] T045 [US3] Search for deleteTask usage with `grep -r "api.deleteTask" frontend/` (expect no results)
-- [ ] T046 [US3] Search for toggleComplete usage with `grep -r "api.toggleComplete" frontend/` (expect no results)
-- [ ] T047 [US3] Test authentication still works by signing in at /signin
-- [ ] T048 [US3] Test chat API still works by sending message in chat interface
+- [x] T042 [US3] Search for createTask usage with `grep -r "api.createTask" frontend/` (expect no results)
+- [x] T043 [US3] Search for listTasks usage with `grep -r "api.listTasks" frontend/` (expect no results)
+- [x] T044 [US3] Search for updateTask usage with `grep -r "api.updateTask" frontend/` (expect no results)
+- [x] T045 [US3] Search for deleteTask usage with `grep -r "api.deleteTask" frontend/` (expect no results)
+- [x] T046 [US3] Search for toggleComplete usage with `grep -r "api.toggleComplete" frontend/` (expect no results)
+- [x] T047 [US3] Test authentication still works by signing in at /signin
+- [x] T048 [US3] Test chat API still works by sending message in chat interface
 
 **Checkpoint**: User Story 3 complete - API client cleaned up, no unused methods remain
 
@@ -139,13 +139,13 @@
 
 **Purpose**: Final validation and cleanup across all changes
 
-- [ ] T049 [P] Run frontend build with `cd frontend && npm run build` to verify no import errors
-- [ ] T050 [P] Run backend with `cd backend && python -c "import main"` to verify no import errors
-- [ ] T051 Verify database task count unchanged with `psql $DATABASE_URL -c "SELECT COUNT(*) FROM tasks;"`
-- [ ] T052 Calculate lines of code removed with `git diff --stat 002-chatkit-refactor...003-remove-legacy-endpoints`
-- [ ] T053 [P] Update CLAUDE.md to remove references to tasks REST API if any exist
-- [ ] T054 [P] Update backend/CLAUDE.md to remove references to routes/tasks.py if any exist
-- [ ] T055 [P] Update frontend/CLAUDE.md to remove references to tasks page/components if any exist
+- [x] T049 [P] Run frontend build with `cd frontend && npm run build` to verify no import errors
+- [x] T050 [P] Run backend with `cd backend && python -c "import main"` to verify no import errors
+- [x] T051 Verify database task count unchanged with `psql $DATABASE_URL -c "SELECT COUNT(*) FROM tasks;"`
+- [x] T052 Calculate lines of code removed with `git diff --stat 002-chatkit-refactor...003-remove-legacy-endpoints`
+- [x] T053 [P] Update CLAUDE.md to remove references to tasks REST API if any exist
+- [x] T054 [P] Update backend/CLAUDE.md to remove references to routes/tasks.py if any exist
+- [x] T055 [P] Update frontend/CLAUDE.md to remove references to tasks page/components if any exist
 - [ ] T056 Run quickstart.md verification steps (10 phases) to validate all success criteria
 - [ ] T057 Commit changes with message: "feat: remove legacy task REST API and UI per constitution v2.0.0"
 

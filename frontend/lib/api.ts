@@ -8,7 +8,6 @@
  */
 
 import { authClient } from "./auth-client";
-import { Task, CreateTaskData, UpdateTaskData, TaskListResponse } from "./types";
 
 /**
  * Base URL for the FastAPI backend
@@ -120,77 +119,6 @@ async function fetchAPI<T>(
 
   return null as T;
 }
-
-/**
- * API methods for task operations
- */
-export const api = {
-  /**
-   * List all tasks for the authenticated user
-   */
-  listTasks: async (
-    userId: string,
-    status?: "all" | "pending" | "completed"
-  ): Promise<Task[]> => {
-    const queryParams = status && status !== "all" ? `?status=${status}` : "";
-    const response = await fetchAPI<TaskListResponse>(
-      `/api/${userId}/tasks${queryParams}`
-    );
-    return response.tasks;
-  },
-
-  /**
-   * Get a single task by ID
-   */
-  getTask: async (userId: string, taskId: string): Promise<Task> => {
-    return fetchAPI<Task>(`/api/${userId}/tasks/${taskId}`);
-  },
-
-  /**
-   * Create a new task
-   */
-  createTask: async (
-    userId: string,
-    data: CreateTaskData
-  ): Promise<Task> => {
-    return fetchAPI<Task>(`/api/${userId}/tasks`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  /**
-   * Update an existing task
-   */
-  updateTask: async (
-    userId: string,
-    taskId: string,
-    data: UpdateTaskData
-  ): Promise<Task> => {
-    return fetchAPI<Task>(`/api/${userId}/tasks/${taskId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  },
-
-  /**
-   * Toggle task completion status
-   */
-  toggleComplete: async (userId: string, taskId: string): Promise<Task> => {
-    return fetchAPI<Task>(`/api/${userId}/tasks/${taskId}/complete`, {
-      method: "PATCH",
-    });
-  },
-
-  /**
-   * Delete a task
-   */
-  deleteTask: async (userId: string, taskId: string): Promise<void> => {
-    await fetchAPI<void>(`/api/${userId}/tasks/${taskId}`, {
-      method: "DELETE",
-    });
-  },
-};
 
 /**
  * Chat API - T070: POST /api/{user_id}/chat with JWT header

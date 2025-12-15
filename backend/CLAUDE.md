@@ -9,17 +9,17 @@
 
 ## Target Structure
 - `main.py`          – FastAPI app, router mounting
-- `models.py`        – SQLModel models (Task, etc.)
+- `models.py`        – SQLModel models (Task, Conversation, Message)
 - `schemas.py`       – Pydantic request/response models
 - `db.py`            – DB engine + session management
-- `routes/tasks.py`  – Task CRUD endpoints
-- `auth.py`          – JWT validation utilities/middleware
+- `routes/chat.py`   – Chat endpoint for conversational task management
+- `middleware.py`    – JWT validation middleware (JWKS)
+- `services/agent.py` – OpenAI Agent with MCP tools
+- `tools/server.py`  – MCP server with task management tools
 
 ## API Conventions
 - All endpoints under `/api/`.
-- Implement endpoints as specified in:
-  - @specs/api/rest-endpoints.md
-  - @specs/api/auth-flow.md
+- Conversational task management via `/api/{user_id}/chat` endpoint
 - All responses are JSON.
 - Use Pydantic models for request/response bodies.
 - Use `HTTPException` with proper status codes for errors.

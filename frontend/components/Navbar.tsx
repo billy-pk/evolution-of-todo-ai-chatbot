@@ -43,12 +43,6 @@ export function Navbar() {
             {session?.user && (
               <div className="hidden md:flex items-center gap-4">
                 <a
-                  href="/tasks"
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  Tasks
-                </a>
-                <a
                   href="/chat"
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
@@ -129,13 +123,6 @@ export function Navbar() {
               <div className="space-y-3">
                 {/* Mobile navigation links */}
                 <div className="space-y-1 px-2">
-                  <a
-                    href="/tasks"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Tasks
-                  </a>
                   <a
                     href="/chat"
                     className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"

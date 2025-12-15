@@ -103,7 +103,6 @@ db.py                - Database engine and session management
 middleware.py        - JWT authentication middleware (JWKS validation)
 config.py            - Settings and environment configuration
 routes/
-  tasks.py           - REST endpoints for task CRUD
   chat.py            - Chat endpoint (POST /api/{user_id}/chat)
 services/
   agent.py           - OpenAI Agent initialization and message processing
