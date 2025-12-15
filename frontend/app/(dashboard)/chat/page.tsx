@@ -122,16 +122,10 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-lg shadow-sm border border-gray-200">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0 rounded-t-lg">
-        <h1 className="text-2xl font-bold text-gray-900">AI Assistant</h1>
-        <p className="text-sm text-gray-500 mt-1">Chat with your AI-powered task manager</p>
-      </div>
-
+    <div className="flex flex-col h-[calc(100vh-8rem)] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       {/* Error Display */}
       {error && (
-        <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
+        <div className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex-shrink-0">
           <p className="text-red-800 text-sm">{error}</p>
           <button
             onClick={() => setError(null)}
@@ -142,17 +136,12 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* ChatKit Component */}
-      <div
-        className="flex-1 overflow-hidden"
-        style={{ minHeight: '500px', height: '100%' }}
-      >
-        <ChatKit
-          control={control}
-          className="w-full h-full"
-          style={{ width: '100%', height: '100%', minHeight: '500px', display: 'block' }}
-        />
-      </div>
+      {/* ChatKit Component - Full height, ChatKit provides its own greeting */}
+      <ChatKit
+        control={control}
+        className="flex-1 w-full"
+        style={{ minHeight: '400px' }}
+      />
     </div>
   );
 }

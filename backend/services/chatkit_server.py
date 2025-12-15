@@ -28,9 +28,8 @@ from chatkit.agents import (
     AgentContext,
     Attachment,
 )
-from agents import Agent, Runner
+from agents import Runner
 from sqlmodel import Session, select
-from openai import AsyncOpenAI
 
 from db import engine
 from models import Conversation, Message
@@ -142,27 +141,12 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
     """
     Custom ChatKit server for task management.
 
-    Integrates with our existing database and provides AI-powered task management.
+    Integrates with our existing database and MCP tools for real task management.
     """
 
     def __init__(self, data_store: Store):
         super().__init__(data_store)
         self.db_engine = engine
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-
-        # Define the assistant agent
-        self.assistant = Agent(
-            model="gpt-4o",
-            name="TaskAssistant",
-            instructions="""You are a helpful task management assistant. You help users:
-- Create new tasks
-- List their existing tasks
-- Update task details
-- Mark tasks as complete
-- Delete tasks
-
-Be concise and helpful. When users ask about tasks, provide clear responses."""
-        )
 
     async def respond(
         self,
@@ -174,6 +158,7 @@ Be concise and helpful. When users ask about tasks, provide clear responses."""
         Handle incoming messages and stream responses.
 
         This is called whenever a user sends a message.
+        Uses the existing MCP-connected agent for real task management.
         """
         logger.info(f"TaskManagerChatKitServer.respond called for thread {thread.id}")
 
@@ -181,7 +166,16 @@ Be concise and helpful. When users ask about tasks, provide clear responses."""
             logger.warning("No input provided to respond")
             return
 
-        # Create agent context
+        # Get user_id from context
+        user_id = context.get("user_id")
+        if not user_id:
+            logger.error("No user_id in context")
+            return
+
+        # Import the existing agent creation function
+        from services.agent import create_task_agent
+
+        # Create agent context for ChatKit
         agent_context = AgentContext(
             thread=thread,
             store=self.store,
@@ -195,15 +189,30 @@ Be concise and helpful. When users ask about tasks, provide clear responses."""
             logger.warning("Failed to convert input to agent format")
             return
 
-        logger.info(f"Running agent with input: {agent_input}")
+        logger.info(f"Running MCP agent for user {user_id} with input: {agent_input}")
 
-        # Run the agent and stream the response
-        result = Runner.run_streamed(
-            self.assistant,
-            input=agent_input,
-            context=agent_context,
-        )
+        try:
+            # Create agent with MCP tools (connects to real PostgreSQL via MCP server)
+            agent, mcp_server = await create_task_agent(user_id)
 
-        # Stream the agent response as ChatKit events
-        async for event in stream_agent_response(agent_context, result):
-            yield event
+            async with mcp_server:
+                # Run the agent with streaming
+                result = Runner.run_streamed(
+                    agent,
+                    input=agent_input,
+                )
+
+                # Stream the agent response as ChatKit events
+                async for event in stream_agent_response(agent_context, result):
+                    yield event
+
+        except Exception as e:
+            logger.error(f"Error in respond: {str(e)}", exc_info=True)
+            # Yield an error message to the user
+            from chatkit.server import ThreadItemDoneEvent
+            error_item = AssistantMessageItem(
+                id=self.store.generate_item_id("message", thread, context),
+                thread_id=thread.id,
+                content=[{"type": "text", "text": f"Sorry, I encountered an error: {str(e)}"}],
+            )
+            yield ThreadItemDoneEvent(item=error_item)
