@@ -146,8 +146,8 @@
 - [x] T053 [P] Update CLAUDE.md to remove references to tasks REST API if any exist
 - [x] T054 [P] Update backend/CLAUDE.md to remove references to routes/tasks.py if any exist
 - [x] T055 [P] Update frontend/CLAUDE.md to remove references to tasks page/components if any exist
-- [ ] T056 Run quickstart.md verification steps (10 phases) to validate all success criteria
-- [ ] T057 Commit changes with message: "feat: remove legacy task REST API and UI per constitution v2.0.0"
+- [x] T056 Run quickstart.md verification steps (10 phases) to validate all success criteria
+- [x] T057 Commit changes with message: "feat: remove legacy task REST API and UI per constitution v2.0.0"
 
 **Checkpoint**: All changes complete, verified, and documented
 
