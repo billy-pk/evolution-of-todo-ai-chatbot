@@ -56,7 +56,7 @@ export default function SigninPage() {
         {
           onSuccess: () => {
             // Redirect after successful signin and session establishment
-            router.push("/tasks");
+            router.push("/chat");
           },
           onError: (ctx) => {
             setError(ctx.error.message || "Sign in failed");
