@@ -103,7 +103,6 @@ db.py                - Database engine and session management
 middleware.py        - JWT authentication middleware (JWKS validation)
 config.py            - Settings and environment configuration
 routes/
-  tasks.py           - REST endpoints for task CRUD
   chat.py            - Chat endpoint (POST /api/{user_id}/chat)
 services/
   agent.py           - OpenAI Agent initialization and message processing
@@ -284,3 +283,10 @@ When making changes that affect chat functionality, restart all three servers to
 - Use `Session(engine)` for database operations
 - Models inherit from `SQLModel, table=True`
 - Automatic Pydantic validation on model creation
+
+## Active Technologies
+- Python 3.13 (backend), TypeScript/Next.js 16 (frontend) + FastAPI, Next.js App Router, Better Auth, OpenAI Agents SDK, FastMCP (003-remove-legacy-endpoints)
+- Neon PostgreSQL (no schema changes required) (003-remove-legacy-endpoints)
+
+## Recent Changes
+- 003-remove-legacy-endpoints: Added Python 3.13 (backend), TypeScript/Next.js 16 (frontend) + FastAPI, Next.js App Router, Better Auth, OpenAI Agents SDK, FastMCP

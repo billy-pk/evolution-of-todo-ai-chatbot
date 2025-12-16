@@ -1,39 +1,50 @@
 <!--
 Sync Impact Report:
-- Version change: 1.0.0 → 1.0.1
-- Modified sections: Architecture Strategy > Technology Stack (Python 3.11+ → Python 3.13)
-- Principles: No changes
-- Templates status:
-  ✅ plan-template.md: No update required
-  ✅ spec-template.md: No update required
-  ✅ tasks-template.md: No update required
-  ⚠ commands/*.md: No command files found to update
+- Version change: 1.0.1 → 2.0.0
+- Modified principles:
+  * Principle I: "Backwards Compatibility" → REMOVED (Phase 3 is standalone, not extending Phase 2)
+  * Principle II: "Stateless Server Design" → UPDATED (expanded to cover MCP tools)
+  * Principle IV: "Single Source of Truth" → UPDATED (removed UI references, chat-centric)
+- Added sections:
+  * New Components expanded with Official MCP SDK details
+  * Conversational Interface principle
+  * MCP Tools Statefulness requirement
+- Removed sections:
+  * All references to "Phase 2 REST API endpoints"
+  * All references to "React UI components"
+  * All references to "extending Phase 2"
+  * "Frontend logic that handles task CRUD outside of the conversational agent"
+- Templates requiring updates:
+  ✅ plan-template.md: No update required (generic template)
+  ✅ spec-template.md: No update required (generic template)
+  ✅ tasks-template.md: No update required (generic template)
 - Ratification date: 2025-12-10 (unchanged)
-- Last amended: 2025-12-10 (Python version clarification)
+- Last amended: 2025-12-15 (Phase 3 architecture redefinition)
+- Breaking changes: MAJOR version bump due to removal of backwards compatibility principle
 -->
 
 # Evolution of Todo - Phase 3: AI-Powered Chatbot Constitution
 
 ## Core Principles
 
-### I. Backwards Compatibility (NON-NEGOTIABLE)
+### I. Conversational Interface Primary (NON-NEGOTIABLE)
 
-**Rule**: Phase 3 MUST NOT break any functionality from Phase 2.
+**Rule**: All task management operations MUST be accessible through conversational interface.
 
-- All REST API endpoints from Phase 2 MUST remain unchanged and functional
-- The tasks table schema MUST remain intact with no breaking migrations
-- Better Auth with JWT MUST remain the authentication system
-- Task CRUD UI MUST NOT be modified or removed
-- All Phase 2 code MUST continue running without regression
+- Users interact with tasks via natural language chat
+- AI agent interprets user intent and executes operations
+- No traditional UI forms or buttons for task CRUD
+- Conversational interface is the primary interaction model
 
-**Rationale**: Phase 3 is an extension layer, not a replacement. Users rely on existing functionality, and breaking changes would violate trust and deployment stability.
+**Rationale**: Phase 3 shifts from traditional UI to conversational AI interface. This enables natural language task management and prepares the foundation for advanced AI-driven workflows.
 
 ### II. Stateless Server Design (NON-NEGOTIABLE)
 
-**Rule**: All chat endpoints MUST be fully stateless.
+**Rule**: All chat endpoints and MCP tools MUST be fully stateless.
 
 - No in-memory session storage allowed
-- Context MUST be reconstructed from the database on every request
+- Chat endpoint MUST reconstruct context from the database on every request
+- MCP tools MUST be stateless and store all state in the database
 - Each request MUST be independently processable with JWT and conversation ID
 
 **Rationale**: Stateless design enables horizontal scaling, simplifies debugging, and prepares the system for Phase 4 (Kubernetes) and Phase 5 (Cloud-native scaling).
@@ -44,9 +55,9 @@ Sync Impact Report:
 
 - All chat requests MUST include JWT: `Authorization: Bearer <token>`
 - User isolation MUST be enforced for:
-  - Tasks (inherited from Phase 2)
-  - Conversations (new in Phase 3)
-  - Messages (new in Phase 3)
+  - Tasks
+  - Conversations
+  - Messages
 - MCP tools MUST verify task ownership using `user_id` before any operation
 - No hard-coded secrets or tokens allowed; use environment variables
 
@@ -54,12 +65,12 @@ Sync Impact Report:
 
 ### IV. Single Source of Truth
 
-**Rule**: Both UI and Chat interfaces MUST operate on the same data.
+**Rule**: All task data MUST reside in a single database with consistent access patterns.
 
-- Tasks created via Chat MUST appear in Phase 2 UI
-- Tasks created via UI MUST appear in Chat
-- Both systems MUST use the same `tasks` table in the database
+- Tasks are stored in the `tasks` table
+- Chat interface operates directly on the database via MCP tools
 - No data duplication or synchronization logic allowed
+- All operations (chat, API) query the same database
 
 **Rationale**: Multiple data sources create inconsistency, confusion, and maintenance burden. A single source of truth ensures reliability.
 
@@ -88,7 +99,7 @@ Sync Impact Report:
 
 ## Architecture Strategy
 
-### Technology Stack (Inherited from Phase 2)
+### Technology Stack
 
 - **Frontend**: Next.js App Router, TailwindCSS, React
 - **Backend**: FastAPI, Python 3.13
@@ -97,17 +108,39 @@ Sync Impact Report:
 
 ### New Components (Phase 3)
 
-- **Chat UI**: OpenAI ChatKit
-- **AI Agent**: OpenAI Agents SDK
-- **Tool Layer**: MCP (Model Context Protocol) tools
+- **Chat UI**: OpenAI ChatKit (official React component)
+- **AI Agent**: OpenAI Agents SDK (official SDK for agent logic)
+- **Tool Layer**: MCP (Model Context Protocol) tools built with Official MCP SDK
+- **MCP Server**: Stateless HTTP MCP server exposing task operations as tools
 - **Persistence**: SQLModel tables for conversations and messages
 
 ### System Boundaries
 
-- Frontend communicates with Backend via REST API
-- Backend enforces authentication via JWT validation
-- MCP tools operate on database with user_id isolation
-- AI Agent calls MCP tools via standardized protocol
+- Frontend loads ChatKit component for conversational interface
+- Frontend calls chat endpoint with user message and conversation ID
+- Backend validates JWT and reconstructs conversation context from database
+- Backend initializes OpenAI Agent with MCP tools
+- Agent processes user message and calls MCP tools as needed
+- MCP tools execute database operations with user isolation
+- Chat endpoint persists conversation state to database
+- Response streams back to frontend via ChatKit
+
+### MCP Tools Architecture
+
+**Stateless MCP Server** (built with Official MCP SDK):
+- Exposes task operations as MCP tools (add_task, list_tasks, update_task, complete_task, delete_task)
+- Each tool receives `user_id` parameter for user isolation
+- Tools connect to PostgreSQL database via SQLModel
+- No in-memory state; all state stored in database
+- HTTP transport for stateless request/response
+
+**Chat Endpoint** (stateless):
+- Receives user message + conversation_id
+- Loads conversation history from database
+- Initializes OpenAI Agent with MCP server connection
+- Agent uses MCP tools to manage tasks
+- Saves new messages to database
+- Returns assistant response
 
 ## Development Workflow
 
@@ -118,14 +151,15 @@ Sync Impact Report:
 3. **Tasks**: Generate task list in `specs/<feature>/tasks.md`
 4. **Implementation**: Follow Red-Green-Refactor cycle
 5. **Validation**: Run tests, verify acceptance criteria
-6. **Integration**: Ensure Phase 2 functionality remains intact
+6. **Integration**: Verify multi-server coordination (Frontend + Backend + MCP Server)
 
 ### Quality Gates
 
 - All PRs MUST pass linting and type checking
 - All tests MUST pass before merge
 - No decrease in test coverage
-- Manual verification that Phase 2 UI still works
+- Manual verification that chat functionality works end-to-end
+- Verify statelessness: restart servers and ensure functionality persists
 
 ### Documentation Requirements
 
@@ -157,8 +191,17 @@ Sync Impact Report:
 
 ### Version History
 
-**Version**: 1.0.1 | **Ratified**: 2025-12-10 | **Last Amended**: 2025-12-10
+**Version**: 2.0.0 | **Ratified**: 2025-12-10 | **Last Amended**: 2025-12-15
 
 **Change Log**:
+- **2.0.0** (2025-12-15): MAJOR - Redefined Phase 3 as standalone conversational AI system
+  - REMOVED: Backwards Compatibility principle (Phase 3 is not extending Phase 2)
+  - REMOVED: All references to "Phase 2 REST API endpoints"
+  - REMOVED: All references to "React UI components" and "task CRUD UI"
+  - ADDED: Conversational Interface Primary principle
+  - UPDATED: Stateless Server Design to cover MCP tools
+  - UPDATED: Single Source of Truth to focus on database-centric design
+  - UPDATED: Architecture Strategy to detail MCP tools and Official MCP SDK
+  - UPDATED: New Components section with MCP Server details
 - **1.0.1** (2025-12-10): Clarified Python version requirement (3.11+ → 3.13)
 - **1.0.0** (2025-12-10): Initial constitution for Phase 3 based on CONSTITUTION.md requirements

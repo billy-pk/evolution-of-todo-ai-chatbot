@@ -1,13 +1,21 @@
-# Frontend Setup - Phase 2 Todo Application
+# Frontend Setup - Phase 3 AI Chatbot Todo Application
 
-This is the frontend for the full-stack todo application built with Next.js, React, and TailwindCSS with Better Auth for authentication.
+This is the frontend for the conversational AI todo application built with Next.js, React, TailwindCSS, and Better Auth for authentication.
 
 ## Tech Stack
 - Next.js 16+ (App Router)
 - React 19+
 - TypeScript
 - TailwindCSS
-- Better Auth
+- Better Auth (JWT authentication)
+- OpenAI ChatKit (conversational UI)
+
+## Architecture
+
+**Phase 3 Conversational Interface**:
+- All task management operations via natural language chat
+- No traditional forms or CRUD UI components
+- Pure conversational interface at `/chat`
 
 ## Setup Instructions
 
@@ -26,37 +34,46 @@ pnpm install
 ```
 
 ### 3. Environment Configuration
-Create a `.env.local` file based on `.env.local.example`:
-```bash
-cp .env.local.example .env.local
+Create a `.env.local` file with:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+BETTER_AUTH_SECRET=<shared-secret>
+BETTER_AUTH_URL=http://localhost:3000
+DATABASE_URL=postgresql://...
+NEXT_PUBLIC_CHATKIT_DOMAIN_KEY=localhost-dev
 ```
 
-Update the `.env.local` file with your actual configuration:
-- `NEXT_PUBLIC_API_URL`: Your backend API URL (e.g., http://localhost:8000)
-- `BETTER_AUTH_SECRET`: Same secret as backend for JWT validation
+**Important**: `BETTER_AUTH_SECRET` must match the backend configuration.
 
 ### 4. Start Development Server
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
 Frontend will be available at: http://localhost:3000
 
 ## Project Structure
-- `app/`: Next.js App Router pages and layouts
-- `components/`: Reusable UI components
-- `lib/`: API client, auth configuration, and utilities
-- `public/`: Static assets
+```
+app/
+  (auth)/              - Authentication pages (signin, signup)
+  (dashboard)/
+    chat/             - Main chat interface for task management
+  api/auth/           - Better Auth API routes
+components/
+  Navbar.tsx          - Navigation with chat link
+lib/
+  api.ts              - API client with JWT authentication
+  auth.ts             - Better Auth server configuration
+  auth-client.ts      - Better Auth client configuration
+  types.ts            - TypeScript type definitions
+```
 
 ## Key Features
-- Authentication with Better Auth
-- Task management (CRUD operations)
-- Responsive UI with TailwindCSS
-- JWT-based authentication flow
+- **Conversational Task Management**: Create, list, update, complete, and delete tasks via natural language
+- **Authentication**: Better Auth with JWT tokens
+- **Responsive UI**: Mobile-first design with TailwindCSS
+- **Real-time Chat**: OpenAI ChatKit integration
+- **Persistent Conversations**: Chat history stored in database
 
 ## Common Commands
 ```bash
@@ -74,73 +91,69 @@ npm test
 
 # Lint code
 npm run lint
-
-# Format code
-npm run format
 ```
 
 ## Integration with Backend
-This frontend communicates with the backend API at the configured `NEXT_PUBLIC_API_URL`. All authenticated requests automatically include the JWT token in the Authorization header.
 
-## Responsive Design Testing (T075-T076)
+The frontend communicates with:
+1. **Backend API** (`NEXT_PUBLIC_API_URL`): Chat endpoint at `/api/{user_id}/chat`
+2. **MCP Server** (via backend): Task management tools for AI agent
 
-The application is fully responsive and should be tested across different viewport sizes to ensure proper layout adaptation.
+All authenticated requests automatically include the JWT token in the Authorization header.
 
-### Mobile Viewport Testing (T075)
-Test the application on mobile devices and small screens (320px - 768px width):
+## Using the Chat Interface
 
-**Browser DevTools Method:**
-1. Open Chrome/Firefox DevTools (F12)
-2. Click the device toolbar icon (Toggle device toolbar)
-3. Select a mobile device preset or set custom dimensions:
-   - **320px** - iPhone SE (smallest supported)
-   - **375px** - iPhone 12/13
-   - **390px** - iPhone 14 Pro
-   - **414px** - iPhone 14 Plus
-   - **768px** - iPad portrait
+### Task Operations via Natural Language
 
-**What to verify on mobile:**
-- ✅ Navbar shows hamburger menu (instead of full navigation)
-- ✅ TaskForm inputs and buttons stack vertically
-- ✅ TaskItem buttons stack vertically
-- ✅ Text sizes are legible (smaller responsive sizes apply)
-- ✅ Touch targets are at least 44x44px
-- ✅ No horizontal scrolling
-- ✅ Content padding adapts (p-3, p-4)
+**Create tasks**:
+- "Add a task to buy groceries"
+- "Create a task: finish the report by Friday"
 
-### Desktop Viewport Testing (T076)
-Test the application on desktop screens (768px - 2560px width):
+**List tasks**:
+- "Show my tasks"
+- "List all pending tasks"
 
-**Browser DevTools Method:**
-1. Open Chrome/Firefox DevTools (F12)
-2. Set responsive mode with custom dimensions:
-   - **1024px** - Small laptop
-   - **1440px** - Standard desktop
-   - **1920px** - Full HD
-   - **2560px** - 2K/QHD
+**Update tasks**:
+- "Update the groceries task to include milk and bread"
+- "Change the deadline for the report task"
 
-**What to verify on desktop:**
-- ✅ Navbar shows full navigation (no hamburger menu)
-- ✅ TaskForm inputs and buttons are side-by-side
-- ✅ TaskItem buttons are side-by-side
-- ✅ Text sizes are larger and more readable
-- ✅ Layout uses available space efficiently
-- ✅ Content is centered with max-width constraints
-- ✅ Padding and spacing are generous (p-4, p-6)
+**Complete tasks**:
+- "Mark the groceries task as done"
+- "Complete the report task"
 
-### Responsive Breakpoints
-The application uses TailwindCSS breakpoints:
+**Delete tasks**:
+- "Delete the groceries task"
+- "Remove the report task"
+
+## Responsive Design
+
+The application is fully responsive and adapts to different viewport sizes:
+
+### Mobile (320px - 768px)
+- Hamburger menu in navbar
+- Stacked layout for chat interface
+- Touch-optimized controls
+
+### Desktop (768px+)
+- Full navigation in navbar
+- Side-by-side layout
+- Keyboard shortcuts enabled
+
+### TailwindCSS Breakpoints
 - `sm:` - 640px and up
 - `md:` - 768px and up
 - `lg:` - 1024px and up
 - `xl:` - 1280px and up
 - `2xl:` - 1536px and up
 
-### Testing Checklist
-- [ ] Test on real mobile device (iOS/Android)
-- [ ] Test on tablet (iPad/Android tablet)
-- [ ] Test on desktop browser (Chrome, Firefox, Safari)
-- [ ] Verify all interactive elements are accessible via touch
-- [ ] Verify all text is readable at all sizes
-- [ ] Test orientation changes (portrait ↔ landscape)
-- [ ] Verify no content overflow or clipping
+## Testing Checklist
+- [ ] Sign in successfully
+- [ ] Access chat interface at `/chat`
+- [ ] Create task via natural language
+- [ ] List tasks via natural language
+- [ ] Update task via natural language
+- [ ] Complete task via natural language
+- [ ] Delete task via natural language
+- [ ] Test on mobile device
+- [ ] Test on desktop browser
+- [ ] Verify responsive layout adapts

@@ -89,18 +89,6 @@ async def health_check_api():
     return await health_check()
 
 
-# T035: Import and include routes with JWT middleware applied
-# All routes under /api will require JWT authentication
-try:
-    from routes import tasks
-    app.include_router(
-        tasks.router,
-        prefix="/api",
-        dependencies=[Depends(JWTBearer())]  # T035: Apply JWT middleware to all /api routes
-    )
-except ImportError:
-    pass  # Routes will be added later when they are created
-
 # T044: Include chat route (User Story 6 - Conversation History)
 # Chat endpoint already has JWTBearer in its dependencies
 try:
