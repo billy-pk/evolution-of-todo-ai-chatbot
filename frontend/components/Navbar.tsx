@@ -10,12 +10,13 @@
  */
 
 import { useSession, signOut } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 
 export function Navbar() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -31,22 +32,27 @@ export function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200" aria-label="Main navigation">
+    <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-lg border-b border-indigo-100 dark:border-indigo-900/50" aria-label="Main navigation">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-14 sm:h-16">
+        <div className="flex justify-between items-center h-16 sm:h-18">
           {/* Logo/Title */}
           <div className="flex items-center gap-6">
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900">
-              📝 Todo App
-            </h1>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                <span className="text-xl">✨</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Todo AI
+              </h1>
+            </div>
             {/* T071: Navigation Links */}
-            {session?.user && (
-              <div className="hidden md:flex items-center gap-4">
+            {session?.user && pathname !== '/chat' && (
+              <div className="hidden md:flex items-center gap-2">
                 <a
                   href="/chat"
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  className="px-4 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all duration-200"
                 >
-                  Chat
+                  💬 Chat
                 </a>
               </div>
             )}
@@ -55,21 +61,26 @@ export function Navbar() {
           {/* Desktop navigation - hidden on mobile */}
           <div className="hidden md:flex items-center gap-3 sm:gap-4">
             {isPending ? (
-              <div className="text-sm text-gray-500" role="status" aria-live="polite">
+              <div className="text-sm text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
                 Loading...
               </div>
             ) : session?.user ? (
               <>
-                <div className="text-xs sm:text-sm">
-                  <span className="text-gray-500">Signed in as </span>
-                  <span className="font-medium text-gray-900">
-                    {session.user.email || session.user.name || "User"}
-                  </span>
+                <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
+                    {(session.user.email?.charAt(0) || session.user.name?.charAt(0) || "U").toUpperCase()}
+                  </div>
+                  <div className="text-xs sm:text-sm">
+                    <span className="text-gray-600 dark:text-gray-400 block text-xs">Signed in</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {session.user.email || session.user.name || "User"}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 border border-red-200 dark:border-red-800"
                   aria-label="Sign out of your account"
                 >
                   {loggingOut ? "Logging out..." : "Logout"}
@@ -78,7 +89,7 @@ export function Navbar() {
             ) : (
               <a
                 href="/signin"
-                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
                 aria-label="Sign in to your account"
               >
                 Sign In
@@ -90,7 +101,7 @@ export function Navbar() {
           <div className="md:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              className="p-2 rounded-xl text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 transition-all duration-200"
               aria-expanded={mobileMenuOpen}
               aria-label="Toggle mobile menu"
             >
@@ -98,7 +109,7 @@ export function Navbar() {
                 className="h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
-                strokeWidth="1.5"
+                strokeWidth="2"
                 stroke="currentColor"
                 aria-hidden="true"
               >
@@ -114,51 +125,65 @@ export function Navbar() {
 
         {/* Mobile menu - shown when hamburger is clicked */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-3" role="menu" aria-label="Mobile navigation menu">
+          <div className="md:hidden border-t border-indigo-100 dark:border-indigo-900/50 py-4 bg-gradient-to-b from-indigo-50/50 to-transparent dark:from-indigo-900/20" role="menu" aria-label="Mobile navigation menu">
             {isPending ? (
-              <div className="text-sm text-gray-500 px-2" role="status" aria-live="polite">
+              <div className="text-sm text-gray-500 dark:text-gray-400 px-2" role="status" aria-live="polite">
                 Loading...
               </div>
             ) : session?.user ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {/* Mobile navigation links */}
-                <div className="space-y-1 px-2">
-                  <a
-                    href="/chat"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                    onClick={() => setMobileMenuOpen(false)}
+                {pathname !== '/chat' && (
+                  <div className="space-y-2 px-2">
+                    <a
+                      href="/chat"
+                      className="flex items-center gap-2 px-4 py-3 rounded-xl text-base font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all duration-200"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <span>💬</span>
+                      <span>Chat</span>
+                    </a>
+                  </div>
+                )}
+                <div className="px-2">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold">
+                      {(session.user.email?.charAt(0) || session.user.name?.charAt(0) || "U").toUpperCase()}
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-600 dark:text-gray-400 block text-xs">Signed in</span>
+                      <span className="font-semibold text-gray-900 dark:text-white block mt-0.5">
+                        {session.user.email || session.user.name || "User"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-2">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleLogout();
+                    }}
+                    disabled={loggingOut}
+                    className="w-full px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 border border-red-200 dark:border-red-800"
+                    aria-label="Sign out of your account"
+                    role="menuitem"
                   >
-                    Chat
-                  </a>
+                    {loggingOut ? "Logging out..." : "Logout"}
+                  </button>
                 </div>
-                <div className="text-sm px-2">
-                  <span className="text-gray-500 block">Signed in as</span>
-                  <span className="font-medium text-gray-900 block mt-1">
-                    {session.user.email || session.user.name || "User"}
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    handleLogout();
-                  }}
-                  disabled={loggingOut}
-                  className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  aria-label="Sign out of your account"
-                  role="menuitem"
-                >
-                  {loggingOut ? "Logging out..." : "Logout"}
-                </button>
               </div>
             ) : (
-              <a
-                href="/signin"
-                className="block w-full px-4 py-2 text-sm font-medium text-center text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                aria-label="Sign in to your account"
-                role="menuitem"
-              >
-                Sign In
-              </a>
+              <div className="px-2">
+                <a
+                  href="/signin"
+                  className="block w-full px-4 py-3 text-sm font-semibold text-center text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 shadow-md"
+                  aria-label="Sign in to your account"
+                  role="menuitem"
+                >
+                  Sign In
+                </a>
+              </div>
             )}
           </div>
         )}
