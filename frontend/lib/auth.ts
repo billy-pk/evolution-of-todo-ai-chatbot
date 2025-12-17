@@ -39,6 +39,20 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
 
   /**
+   * Trusted origins - Allow Vercel URLs and localhost
+   * Better Auth validates requests come from trusted domains
+   */
+  trustedOrigins: process.env.VERCEL_URL
+    ? [
+        // Current Vercel deployment URL
+        `https://${process.env.VERCEL_URL}`,
+        // Common Vercel production patterns
+        "https://evolution-of-todo-ai-chatbot-phase3-billy-pks-projects.vercel.app",
+        "https://evolution-of-todo-ai-chatbot-phase3-6vm4vlp4k.vercel.app",
+      ]
+    : ["http://localhost:3000"],
+
+  /**
    * Enable email and password authentication
    */
   emailAndPassword: {
