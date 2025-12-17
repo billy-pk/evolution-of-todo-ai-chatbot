@@ -25,8 +25,12 @@ export const auth = betterAuth({
 
   /**
    * Base URL where the auth endpoints are hosted
+   *
+   * Automatically uses Vercel deployment URL in production
+   * For local development, uncomment: "http://localhost:3000"
    */
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL: process.env.BETTER_AUTH_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
 
   /**
    * Secret used for signing tokens and encrypting sessions
