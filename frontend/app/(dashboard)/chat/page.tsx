@@ -37,17 +37,23 @@ export default function ChatPage() {
       async fetch(input: RequestInfo | URL, init?: RequestInit) {
         console.log('🔵 ChatKit: Custom fetch called', { url: input });
 
-        // Get Better Auth JWT for authenticating with our backend
-        const { data, error: authError } = await authClient.token();
-        if (authError || !data?.token) {
-          console.error('ChatKit: Auth error', authError);
+        // Get Better Auth session token from cookie
+        // Better Auth stores the JWT in a cookie, fetch will automatically include it
+        // We need to extract it to send as Authorization header to our backend
+        const sessionToken = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('better-auth.session_token='))
+          ?.split('=')[1];
+
+        if (!sessionToken) {
+          console.error('ChatKit: No session token found');
           throw new Error('Not authenticated - please sign in');
         }
 
-        // Inject auth header
+        // Inject auth header with the JWT token
         const headers = {
           ...init?.headers,
-          'Authorization': `Bearer ${data.token}`,
+          'Authorization': `Bearer ${sessionToken}`,
         };
 
         console.log('ChatKit: Fetching with auth header');

@@ -64,20 +64,10 @@ export const auth = betterAuth({
   /**
    * Enable JWT plugin for token-based authentication
    * This generates JWT tokens that include user_id in the payload
+   * Note: JWT plugin configuration is handled by Better Auth defaults
    */
   plugins: [
-    jwt({
-      /**
-       * JWT algorithm - EdDSA is used for signing
-       */
-      algorithm: "EdDSA",
-      /**
-       * Include user ID in JWT payload for backend validation
-       */
-      payload: {
-        userId: "user_id",
-      },
-    }),
+    jwt(),
   ],
 });
 

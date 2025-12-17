@@ -36,7 +36,7 @@ let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
 /**
- * Get the JWT token from Better Auth session (with caching)
+ * Get the JWT token from Better Auth session cookie (with caching)
  */
 async function getAuthToken(): Promise<string | null> {
   try {
@@ -45,18 +45,23 @@ async function getAuthToken(): Promise<string | null> {
       return cachedToken;
     }
 
-    const { data, error } = await authClient.token();
+    // Get session token from cookie
+    // Better Auth stores the JWT in a cookie named 'better-auth.session_token'
+    const sessionToken = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('better-auth.session_token='))
+      ?.split('=')[1];
 
-    if (error || !data?.token) {
+    if (!sessionToken) {
       cachedToken = null;
       return null;
     }
 
     // Cache the token for 14 minutes (tokens expire in 15 minutes)
-    cachedToken = data.token;
+    cachedToken = sessionToken;
     tokenExpiry = Date.now() + (14 * 60 * 1000);
 
-    return data.token;
+    return sessionToken;
   } catch (err) {
     console.error("Error getting auth token:", err);
     cachedToken = null;
