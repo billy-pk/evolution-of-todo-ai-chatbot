@@ -128,7 +128,7 @@ Go to: **Project Settings → Environment Variables**
 # 1. DATABASE_URL
 # Your Neon PostgreSQL connection string
 # Used by Better Auth to store users and sessions
-DATABASE_URL=postgresql://neondb_owner:npg_LRBXGT9Kgh1C@ep-divine-feather-a4qc11zk.us-east-1.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL="Your connection string"
 
 # 2. BETTER_AUTH_SECRET
 # MUST be at least 32 characters

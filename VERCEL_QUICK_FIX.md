@@ -51,7 +51,7 @@ Add these EXACT variables in Vercel Dashboard:
 **Project Settings → Environment Variables → Add New**
 
 ```plaintext
-DATABASE_URL = postgresql://neondb_owner:npg_LRBXGT9Kgh1C@ep-divine-feather-a4qc11zk.us-east-1.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL = "Your connection string"
 
 BETTER_AUTH_SECRET = [run: openssl rand -base64 32]
 
@@ -160,7 +160,7 @@ openssl rand -base64 32
 
 | Key | Value |
 |-----|-------|
-| `DATABASE_URL` | `postgresql://neondb_owner:npg_LRBXGT9Kgh1C@ep-divine-feather-a4qc11zk.us-east-1.aws.neon.tech/neondb?sslmode=require` |
+| `DATABASE_URL` | `YOUR CONNECTION STRING` |
 | `BETTER_AUTH_SECRET` | [Paste output from openssl command] |
 | `BETTER_AUTH_URL` | `https://your-project.vercel.app` |
 | `NEXT_PUBLIC_API_URL` | Leave empty for now |
