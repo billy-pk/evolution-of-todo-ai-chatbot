@@ -38,16 +38,36 @@ export default function ChatPage() {
         console.log('🔵 ChatKit: Custom fetch called', { url: input });
 
         try {
-          // Get JWT token from Better Auth using the token() method
-          // This is the correct way to get the JWT token in Better Auth
-          const jwtToken = await authClient.token();
+          // Get JWT token from the current session
+          // Better Auth with JWT plugin adds token to the session object
+          const jwtToken = (session as any)?.token;
 
           if (!jwtToken) {
-            console.error('❌ ChatKit: No JWT token available');
-            throw new Error('Not authenticated - please sign in again');
+            console.error('❌ ChatKit: No JWT token in session');
+            console.log('Session object:', session);
+
+            // Try to get fresh session
+            const { data: freshSession } = await authClient.getSession();
+            const freshToken = (freshSession as any)?.token;
+
+            if (!freshToken) {
+              throw new Error('Not authenticated - please sign in again');
+            }
+
+            // Use fresh token
+            const headers = {
+              ...init?.headers,
+              'Authorization': `Bearer ${freshToken}`,
+            };
+
+            console.log('✅ ChatKit: Using fresh JWT token');
+            return fetch(input, {
+              ...init,
+              headers,
+            });
           }
 
-          console.log('✅ ChatKit: JWT token retrieved successfully');
+          console.log('✅ ChatKit: JWT token retrieved from session');
 
           // Inject auth header with the JWT token
           const headers = {
