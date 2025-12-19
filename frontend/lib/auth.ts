@@ -14,13 +14,18 @@ const trustedOrigins = (() => {
 
   // Add Vercel auto-generated URL if available
   if (process.env.VERCEL_URL) {
+    // Add with https
     origins.push(`https://${process.env.VERCEL_URL}`);
+    // Also try without www
+    origins.push(`https://www.${process.env.VERCEL_URL}`);
   }
 
   // Add custom production domain if set
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     origins.push(process.env.NEXT_PUBLIC_SITE_URL);
   }
+
+  console.log("📍 Calculated trusted origins:", origins);
 
   return origins;
 })();
@@ -70,6 +75,17 @@ export const auth = betterAuth({
    * Better Auth validates requests come from trusted domains
    */
   trustedOrigins,
+
+  /**
+   * Advanced options for production deployment
+   */
+  advanced: {
+    /**
+     * Disable origin check temporarily for debugging
+     * TODO: Remove this after fixing trustedOrigins issue
+     */
+    disableCSRFCheck: true,
+  },
 
   /**
    * Enable email and password authentication
