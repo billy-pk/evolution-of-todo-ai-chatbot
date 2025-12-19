@@ -48,6 +48,7 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
+@app.head("/health")
 @app.get("/health")
 async def health_check():
     """
