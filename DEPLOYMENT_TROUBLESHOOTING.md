@@ -136,15 +136,38 @@ Then redeploy on Render.
 POST /api/auth/sign-in/email 403 Forbidden
 ```
 
+**Root Cause:**
+Better Auth's CSRF protection checks that the request `Origin` header matches one of the `trustedOrigins`. Vercel's `VERCEL_URL` environment variable contains deployment-specific URLs (like `your-app-abc123.vercel.app`) that change with each deployment, but your production URL is stable (`your-app.vercel.app`).
+
 **Causes:**
 1. `BETTER_AUTH_SECRET` not set on Vercel
-2. `BETTER_AUTH_URL` incorrectly set (should be empty)
-3. Vercel URL not in trustedOrigins (fixed by our update)
+2. Stale JWKS keys in database after changing `BETTER_AUTH_SECRET`
+3. Production Vercel URL not explicitly added to trustedOrigins
+4. `VERCEL_URL` mismatch with actual production URL
 
 **Solutions:**
-- ✅ Remove or empty `BETTER_AUTH_URL` in Vercel env vars
-- ✅ Verify `BETTER_AUTH_SECRET` is set
-- ✅ Redeploy after env var changes
+
+**A. If you changed BETTER_AUTH_SECRET:**
+```sql
+-- Clear stale keys in Neon database
+DELETE FROM jwks;
+DELETE FROM session;
+```
+
+**B. Verify BETTER_AUTH_SECRET matches:**
+- Check Vercel and Render both have EXACTLY the same secret
+- No extra spaces or newlines
+- Generate new: `openssl rand -base64 32`
+
+**C. Explicit production URL (FIXED):**
+The code now includes your production URL explicitly:
+```typescript
+origins.push("https://evolution-of-todo-ai-chatbot-phase3.vercel.app");
+```
+
+**D. Redeploy after changes:**
+- Vercel: Auto-deploys on git push or manual redeploy
+- Clear browser cache after redeployment
 
 ### Issue 2: Database Connection Errors
 

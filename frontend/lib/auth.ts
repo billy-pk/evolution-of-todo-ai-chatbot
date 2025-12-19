@@ -12,15 +12,16 @@ const trustedOrigins = (() => {
   // Always add localhost for development
   origins.push("http://localhost:3000");
 
-  // Add Vercel auto-generated URL if available
+  // Add explicit production URL (your main Vercel deployment)
+  // This is the stable URL that doesn't change with each deployment
+  origins.push("https://evolution-of-todo-ai-chatbot-phase3.vercel.app");
+
+  // Add Vercel auto-generated URL if available (for preview deployments)
   if (process.env.VERCEL_URL) {
-    // Add with https
     origins.push(`https://${process.env.VERCEL_URL}`);
-    // Also try without www
-    origins.push(`https://www.${process.env.VERCEL_URL}`);
   }
 
-  // Add custom production domain if set
+  // Add custom production domain if set (for custom domains)
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     origins.push(process.env.NEXT_PUBLIC_SITE_URL);
   }
@@ -75,17 +76,6 @@ export const auth = betterAuth({
    * Better Auth validates requests come from trusted domains
    */
   trustedOrigins,
-
-  /**
-   * Advanced options for production deployment
-   */
-  advanced: {
-    /**
-     * Disable origin check temporarily for debugging
-     * TODO: Remove this after fixing trustedOrigins issue
-     */
-    disableCSRFCheck: true,
-  },
 
   /**
    * Enable email and password authentication
