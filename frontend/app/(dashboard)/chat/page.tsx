@@ -38,41 +38,26 @@ export default function ChatPage() {
         console.log('🔵 ChatKit: Custom fetch called', { url: input });
 
         try {
-          // Get JWT token from the current session
-          // Better Auth with JWT plugin adds token to the session object
-          const jwtToken = (session as any)?.token;
+          // Get JWT token using Better Auth's jwtClient plugin
+          // This calls the /api/auth/token endpoint to get a fresh JWT
+          const { data, error } = await authClient.token();
 
-          if (!jwtToken) {
-            console.error('❌ ChatKit: No JWT token in session');
-            console.log('Session object:', session);
-
-            // Try to get fresh session
-            const { data: freshSession } = await authClient.getSession();
-            const freshToken = (freshSession as any)?.token;
-
-            if (!freshToken) {
-              throw new Error('Not authenticated - please sign in again');
-            }
-
-            // Use fresh token
-            const headers = {
-              ...init?.headers,
-              'Authorization': `Bearer ${freshToken}`,
-            };
-
-            console.log('✅ ChatKit: Using fresh JWT token');
-            return fetch(input, {
-              ...init,
-              headers,
-            });
+          if (error) {
+            console.error('❌ ChatKit: Error getting token:', error);
+            throw new Error('Not authenticated - please sign in again');
           }
 
-          console.log('✅ ChatKit: JWT token retrieved from session');
+          if (!data?.token) {
+            console.error('❌ ChatKit: No JWT token returned');
+            throw new Error('Not authenticated - please sign in again');
+          }
+
+          console.log('✅ ChatKit: JWT token retrieved successfully');
 
           // Inject auth header with the JWT token
           const headers = {
             ...init?.headers,
-            'Authorization': `Bearer ${jwtToken}`,
+            'Authorization': `Bearer ${data.token}`,
           };
 
           console.log('🚀 ChatKit: Fetching with auth header');
