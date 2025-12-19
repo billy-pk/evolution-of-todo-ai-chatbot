@@ -28,9 +28,10 @@ MCP_SERVER_URL=  # Leave empty for auto-detection
 
 1. Create a new Web Service on Render
 2. Connect your repository
-3. Set build command: `pip install -r requirements.txt`
-4. Set start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-5. Add environment variables:
+3. Set **Root Directory**: `backend` (important!)
+4. Set **Build Command**: `pip install -r requirements.txt`
+5. Set **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+6. Add environment variables:
    ```
    DATABASE_URL=<your-neon-postgresql-url>
    BETTER_AUTH_SECRET=<your-secret>
@@ -40,7 +41,7 @@ MCP_SERVER_URL=  # Leave empty for auto-detection
    ENVIRONMENT=production
    ```
 
-6. Deploy
+7. Deploy
 
 **Verifying deployment:**
 - Check health: `https://your-app.onrender.com/health`
