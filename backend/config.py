@@ -36,10 +36,35 @@ class Settings(BaseSettings):
     OPENAI_API_TIMEOUT: int = 30
 
     # MCP Server Configuration
-    MCP_SERVER_URL: str = "http://localhost:8000/mcp"
+    # Set to True to mount MCP server on FastAPI (unified deployment for Render)
+    # Set to False to run MCP server separately on port 8001 (separate deployment for OCI)
+    MOUNT_MCP_SERVER: bool = False
+
+    # MCP server URL - automatically adjusted based on MOUNT_MCP_SERVER
+    # When mounted: http://localhost:8000/mcp
+    # When separate: http://localhost:8001/mcp
+    MCP_SERVER_URL: Optional[str] = None
 
     # Rate Limiting
     RATE_LIMIT_REQUESTS_PER_HOUR: int = 100
+
+    @property
+    def mcp_server_url(self) -> str:
+        """
+        Get MCP server URL based on deployment mode.
+
+        Returns:
+            str: MCP server URL
+        """
+        if self.MCP_SERVER_URL:
+            return self.MCP_SERVER_URL
+
+        if self.MOUNT_MCP_SERVER:
+            # Unified mode: MCP mounted on FastAPI
+            return f"http://localhost:{self.API_PORT}/mcp"
+        else:
+            # Separate mode: MCP on port 8001
+            return "http://localhost:8001/mcp"
 
 
 # Create a single instance of settings

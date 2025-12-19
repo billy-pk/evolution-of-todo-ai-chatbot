@@ -89,6 +89,19 @@ async def health_check_api():
     return await health_check()
 
 
+# Mount MCP server if MOUNT_MCP_SERVER is enabled (unified deployment mode)
+if settings.MOUNT_MCP_SERVER:
+    try:
+        from tools.server import get_mcp_app
+        mcp_app = get_mcp_app()
+        app.mount("/mcp", mcp_app)
+        logging.getLogger(__name__).info("✅ MCP server mounted at /mcp (unified deployment mode)")
+    except Exception as e:
+        logging.getLogger(__name__).error(f"❌ Failed to mount MCP server: {e}")
+else:
+    logging.getLogger(__name__).info("ℹ️  MCP server not mounted - expecting separate service on port 8001")
+
+
 # T044: Include chat route (User Story 6 - Conversation History)
 # Chat endpoint already has JWTBearer in its dependencies
 try:

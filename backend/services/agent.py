@@ -50,7 +50,7 @@ async def get_mcp_server():
             _mcp_server = MCPServerStreamableHttp(
                 name="Task MCP Server",
                 params={
-                    "url": settings.MCP_SERVER_URL,  # http://localhost:8001/mcp
+                    "url": settings.mcp_server_url,  # Auto-adjusted based on MOUNT_MCP_SERVER
                     "timeout": settings.OPENAI_API_TIMEOUT,
                 },
                 cache_tools_list=True,

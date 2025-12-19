@@ -634,7 +634,19 @@ def delete_task_tool(user_id: str, task_id: str) -> dict:
     return delete_task(user_id, task_id)
 
 
+def get_mcp_app():
+    """
+    Get the MCP FastAPI application instance.
+    This function allows the MCP app to be mounted on the main FastAPI app
+    or run standalone.
+
+    Returns:
+        FastAPI: The MCP server's FastAPI application
+    """
+    return mcp.streamable_http_app()
+
+
 if __name__ == "__main__":
     # Run MCP server on HTTP transport
-    # This will start the server at http://localhost:8000/mcp
+    # This will start the server at http://localhost:8001/mcp
     mcp.run(transport="streamable-http")
