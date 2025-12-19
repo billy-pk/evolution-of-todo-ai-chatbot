@@ -8,9 +8,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from '@/lib/auth-client';
+import { useSession, fetchJWTToken } from '@/lib/auth-client';
 import { ChatKit, useChatKit } from '@openai/chatkit-react';
-import { authClient } from '@/lib/auth-client';
 
 export default function ChatPage() {
   const { data: session, isPending } = useSession();
@@ -38,17 +37,12 @@ export default function ChatPage() {
         console.log('🔵 ChatKit: Custom fetch called', { url: input });
 
         try {
-          // Get JWT token using Better Auth's jwtClient plugin
-          // This calls the /api/auth/token endpoint to get a fresh JWT
-          const { data, error } = await authClient.token();
+          // Get JWT token by calling /api/auth/token endpoint
+          // This requires an active session (cookies are included automatically)
+          const jwtToken = await fetchJWTToken();
 
-          if (error) {
-            console.error('❌ ChatKit: Error getting token:', error);
-            throw new Error('Not authenticated - please sign in again');
-          }
-
-          if (!data?.token) {
-            console.error('❌ ChatKit: No JWT token returned');
+          if (!jwtToken) {
+            console.error('❌ ChatKit: No JWT token returned from /api/auth/token');
             throw new Error('Not authenticated - please sign in again');
           }
 
@@ -57,7 +51,7 @@ export default function ChatPage() {
           // Inject auth header with the JWT token
           const headers = {
             ...init?.headers,
-            'Authorization': `Bearer ${data.token}`,
+            'Authorization': `Bearer ${jwtToken}`,
           };
 
           console.log('🚀 ChatKit: Fetching with auth header');
