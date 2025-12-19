@@ -41,16 +41,29 @@ export const auth = betterAuth({
   /**
    * Trusted origins - Allow Vercel URLs and localhost
    * Better Auth validates requests come from trusted domains
+   *
+   * Environment variables used:
+   * - VERCEL_URL: Auto-provided by Vercel (current deployment URL)
+   * - NEXT_PUBLIC_SITE_URL: Your production domain (set in Vercel env vars)
    */
-  trustedOrigins: process.env.VERCEL_URL
-    ? [
-        // Current Vercel deployment URL
-        `https://${process.env.VERCEL_URL}`,
-        // Common Vercel production patterns
-        "https://evolution-of-todo-ai-chatbot-phase3-billy-pks-projects.vercel.app",
-        "https://evolution-of-todo-ai-chatbot-phase3-6vm4vlp4k.vercel.app",
-      ]
-    : ["http://localhost:3000"],
+  trustedOrigins: (() => {
+    const origins: string[] = [];
+
+    // Always add localhost for development
+    origins.push("http://localhost:3000");
+
+    // Add Vercel auto-generated URL if available
+    if (process.env.VERCEL_URL) {
+      origins.push(`https://${process.env.VERCEL_URL}`);
+    }
+
+    // Add custom production domain if set
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+    }
+
+    return origins;
+  })(),
 
   /**
    * Enable email and password authentication
