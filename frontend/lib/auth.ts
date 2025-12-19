@@ -2,6 +2,37 @@ import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins";
 import { Pool } from "pg";
 
+// Calculate baseURL and trustedOrigins
+const baseURL = process.env.BETTER_AUTH_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+const trustedOrigins = (() => {
+  const origins: string[] = [];
+
+  // Always add localhost for development
+  origins.push("http://localhost:3000");
+
+  // Add Vercel auto-generated URL if available
+  if (process.env.VERCEL_URL) {
+    origins.push(`https://${process.env.VERCEL_URL}`);
+  }
+
+  // Add custom production domain if set
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    origins.push(process.env.NEXT_PUBLIC_SITE_URL);
+  }
+
+  return origins;
+})();
+
+// Debug logging (only in development or when needed)
+console.log("🔐 Better Auth Configuration:");
+console.log("  baseURL:", baseURL);
+console.log("  trustedOrigins:", trustedOrigins);
+console.log("  VERCEL_URL:", process.env.VERCEL_URL);
+console.log("  BETTER_AUTH_SECRET set:", !!process.env.BETTER_AUTH_SECRET);
+console.log("  DATABASE_URL set:", !!process.env.DATABASE_URL);
+
 /**
  * Better Auth server configuration
  *
@@ -25,12 +56,8 @@ export const auth = betterAuth({
 
   /**
    * Base URL where the auth endpoints are hosted
-   *
-   * Automatically uses Vercel deployment URL in production
-   * For local development, uncomment: "http://localhost:3000"
    */
-  baseURL: process.env.BETTER_AUTH_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
+  baseURL,
 
   /**
    * Secret used for signing tokens and encrypting sessions
@@ -41,29 +68,8 @@ export const auth = betterAuth({
   /**
    * Trusted origins - Allow Vercel URLs and localhost
    * Better Auth validates requests come from trusted domains
-   *
-   * Environment variables used:
-   * - VERCEL_URL: Auto-provided by Vercel (current deployment URL)
-   * - NEXT_PUBLIC_SITE_URL: Your production domain (set in Vercel env vars)
    */
-  trustedOrigins: (() => {
-    const origins: string[] = [];
-
-    // Always add localhost for development
-    origins.push("http://localhost:3000");
-
-    // Add Vercel auto-generated URL if available
-    if (process.env.VERCEL_URL) {
-      origins.push(`https://${process.env.VERCEL_URL}`);
-    }
-
-    // Add custom production domain if set
-    if (process.env.NEXT_PUBLIC_SITE_URL) {
-      origins.push(process.env.NEXT_PUBLIC_SITE_URL);
-    }
-
-    return origins;
-  })(),
+  trustedOrigins,
 
   /**
    * Enable email and password authentication
