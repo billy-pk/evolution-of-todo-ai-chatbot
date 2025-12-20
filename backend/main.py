@@ -18,29 +18,28 @@ logging.basicConfig(
 )
 
 # Get MCP app if mounting (must happen before creating FastAPI app)
+# Following pattern from: https://github.com/modelcontextprotocol/python-sdk/pull/1712
+import contextlib
+from typing import AsyncIterator
+
 mcp_app = None
 mcp_lifespan = None
+
 if settings.MOUNT_MCP_SERVER:
     try:
-        from tools.server import get_mcp_app
+        from tools.server import get_mcp_app, mcp as mcp_server
+
         mcp_app = get_mcp_app()
-        # Extract lifespan from the ASGI app
-        if hasattr(mcp_app, 'lifespan'):
-            mcp_lifespan = mcp_app.lifespan
-            logging.getLogger(__name__).info("✅ MCP app created with lifespan")
-        else:
-            logging.getLogger(__name__).warning("⚠️  MCP app has no lifespan attribute, creating custom lifespan")
-            # Create custom lifespan that runs MCP session manager
-            import contextlib
-            from tools.server import mcp as mcp_server
 
-            @contextlib.asynccontextmanager
-            async def mcp_lifespan(app):
-                async with mcp_server.session_manager.run():
-                    yield
+        # Create custom lifespan that runs MCP session manager
+        # FastAPI doesn't automatically trigger lifespan of mounted sub-apps
+        @contextlib.asynccontextmanager
+        async def mcp_lifespan(app: FastAPI) -> AsyncIterator[None]:
+            """FastAPI lifespan that initializes the MCP session manager."""
+            async with mcp_server.session_manager.run():
+                yield
 
-            mcp_lifespan = mcp_lifespan
-            logging.getLogger(__name__).info("✅ Created custom MCP lifespan")
+        logging.getLogger(__name__).info("✅ MCP app and lifespan created")
     except Exception as e:
         logging.getLogger(__name__).error(f"❌ Failed to create MCP app: {e}")
         import traceback
@@ -121,11 +120,9 @@ async def health_check_api():
 # Mount MCP server if MOUNT_MCP_SERVER is enabled (unified deployment mode)
 if settings.MOUNT_MCP_SERVER and mcp_app is not None:
     try:
-        # Note: mcp.http_app(path="/mcp") already includes the /mcp path
-        # So we mount it at root and it will be accessible at /mcp
-        from starlette.routing import Mount
-        app.routes.append(Mount("/", app=mcp_app))
-        logging.getLogger(__name__).info("✅ MCP server mounted (accessible at /mcp)")
+        # Mount MCP app at /mcp following FastMCP + FastAPI pattern
+        app.mount("/mcp", mcp_app)
+        logging.getLogger(__name__).info("✅ MCP server mounted at /mcp (unified deployment mode)")
     except Exception as e:
         logging.getLogger(__name__).error(f"❌ Failed to mount MCP server: {e}")
         import traceback

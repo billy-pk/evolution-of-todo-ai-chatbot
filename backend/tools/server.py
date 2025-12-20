@@ -32,7 +32,8 @@ from datetime import datetime, UTC
 mcp = FastMCP(
     "TaskMCPServer",
     stateless_http=True,
-    json_response=True
+    json_response=True,
+    streamable_http_path="/"  # Path where MCP will be accessible (will be mounted at /mcp)
 )
 
 
@@ -636,14 +637,14 @@ def delete_task_tool(user_id: str, task_id: str) -> dict:
 
 def get_mcp_app():
     """
-    Get the MCP ASGI application instance with lifespan support.
+    Get the MCP ASGI application instance.
     This function allows the MCP app to be mounted on the main FastAPI app
     or run standalone.
 
     Returns:
-        ASGI app: The MCP server's ASGI application with lifespan
+        Starlette: The MCP server's Starlette application
     """
-    return mcp.http_app(path="/mcp")
+    return mcp.streamable_http_app()
 
 
 if __name__ == "__main__":
