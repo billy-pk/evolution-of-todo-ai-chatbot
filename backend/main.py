@@ -17,17 +17,34 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Get MCP app and lifespan if mounting (must happen before creating FastAPI app)
+# Get MCP app if mounting (must happen before creating FastAPI app)
 mcp_app = None
 mcp_lifespan = None
 if settings.MOUNT_MCP_SERVER:
     try:
         from tools.server import get_mcp_app
         mcp_app = get_mcp_app()
-        mcp_lifespan = mcp_app.lifespan
-        logging.getLogger(__name__).info("✅ MCP app created with lifespan")
+        # Extract lifespan from the ASGI app
+        if hasattr(mcp_app, 'lifespan'):
+            mcp_lifespan = mcp_app.lifespan
+            logging.getLogger(__name__).info("✅ MCP app created with lifespan")
+        else:
+            logging.getLogger(__name__).warning("⚠️  MCP app has no lifespan attribute, creating custom lifespan")
+            # Create custom lifespan that runs MCP session manager
+            import contextlib
+            from tools.server import mcp as mcp_server
+
+            @contextlib.asynccontextmanager
+            async def mcp_lifespan(app):
+                async with mcp_server.session_manager.run():
+                    yield
+
+            mcp_lifespan = mcp_lifespan
+            logging.getLogger(__name__).info("✅ Created custom MCP lifespan")
     except Exception as e:
         logging.getLogger(__name__).error(f"❌ Failed to create MCP app: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def create_app() -> FastAPI:
@@ -104,10 +121,15 @@ async def health_check_api():
 # Mount MCP server if MOUNT_MCP_SERVER is enabled (unified deployment mode)
 if settings.MOUNT_MCP_SERVER and mcp_app is not None:
     try:
-        app.mount("/mcp", mcp_app)
-        logging.getLogger(__name__).info("✅ MCP server mounted at /mcp (unified deployment mode)")
+        # Note: mcp.http_app(path="/mcp") already includes the /mcp path
+        # So we mount it at root and it will be accessible at /mcp
+        from starlette.routing import Mount
+        app.routes.append(Mount("/", app=mcp_app))
+        logging.getLogger(__name__).info("✅ MCP server mounted (accessible at /mcp)")
     except Exception as e:
         logging.getLogger(__name__).error(f"❌ Failed to mount MCP server: {e}")
+        import traceback
+        traceback.print_exc()
 elif not settings.MOUNT_MCP_SERVER:
     logging.getLogger(__name__).info("ℹ️  MCP server not mounted - expecting separate service on port 8001")
 

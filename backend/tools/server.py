@@ -636,14 +636,14 @@ def delete_task_tool(user_id: str, task_id: str) -> dict:
 
 def get_mcp_app():
     """
-    Get the MCP FastAPI application instance.
+    Get the MCP ASGI application instance with lifespan support.
     This function allows the MCP app to be mounted on the main FastAPI app
     or run standalone.
 
     Returns:
-        FastAPI: The MCP server's FastAPI application
+        ASGI app: The MCP server's ASGI application with lifespan
     """
-    return mcp.streamable_http_app()
+    return mcp.http_app(path="/mcp")
 
 
 if __name__ == "__main__":
