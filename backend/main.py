@@ -33,10 +33,16 @@ def create_app() -> FastAPI:
     )
 
     # T020: Add CORS middleware
+    # Note: Cannot use allow_origins=["*"] with allow_credentials=True
+    # Must specify exact origins when using credentials
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-
+        allow_origins=[
+            "http://localhost:3000",  # Local development
+            "https://evolution-of-todo-ai-chatbot-phase3.vercel.app",  # Production frontend
+            "https://evolution-of-todo-ai-chatbot-phase3-hdxtoezc4.vercel.app",  # Vercel deployment URL
+            "https://evolution-of-todo-ai-chatbot-phase3-bftn81ny4.vercel.app",  # Another deployment URL
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
