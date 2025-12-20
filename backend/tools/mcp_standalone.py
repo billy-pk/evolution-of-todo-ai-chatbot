@@ -59,6 +59,18 @@ def main():
     # Get the streamable HTTP ASGI app from FastMCP (serves at root)
     mcp_app = mcp.streamable_http_app()
 
+    # --- ADD HEALTH CHECK HERE ---
+    from fastapi.responses import JSONResponse
+
+    @mcp_app.head("/health")
+    @mcp_app.get("/health")
+    async def mcp_health():
+        """Health check for Render to keep the standalone MCP server alive."""
+        return JSONResponse(
+            content={"status": "healthy", "service": "mcp-standalone"},
+            status_code=200
+        )
+
     # Wrap with lifespan
     mcp_app.router.lifespan_context = lifespan_wrapper
 
