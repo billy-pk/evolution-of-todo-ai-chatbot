@@ -12,7 +12,7 @@ Architecture:
 - Returns structured responses with tool calls
 """
 
-from agents import Agent, Runner, function_tool
+from agents import Agent, Runner
 from agents.mcp import MCPServerStreamableHttp
 from agents.model_settings import ModelSettings
 from config import settings
@@ -65,17 +65,21 @@ async def get_mcp_server():
 
 async def create_task_agent(user_id: str):
     """
-    Create an AI agent with task management tools.
+    Create an AI agent connected to the Task MCP Server.
 
     Args:
         user_id: User ID for contextualizing agent responses
 
     Returns:
-        Tuple of (agent, server_or_none) for use in async context manager
-        - If MOUNT_MCP_SERVER=true: (agent, None) - uses direct function tools
-        - If MOUNT_MCP_SERVER=false: (agent, mcp_server) - uses HTTP MCP connection
+        Tuple of (agent, server) for use in async context manager
     """
-    instructions = f"""You are a helpful assistant that manages todo tasks for users.
+    # Get shared MCP server connection (singleton)
+    server = await get_mcp_server()
+
+    # Create agent with MCP tools (new agent per request for user_id isolation)
+    agent = Agent(
+        name="TaskAssistant",
+        instructions=f"""You are a helpful assistant that manages todo tasks for users.
 
 You have access to tools to create, list, update, complete, and delete tasks.
 
@@ -98,98 +102,12 @@ Guidelines:
 - Confirm actions after completing them (e.g., "I've marked 'Buy groceries' as complete")
 - If multiple tasks match the user's description, ask which one they mean
 - If no tasks match, tell the user the task wasn't found
-"""
+""",
+        mcp_servers=[server],
+        model=settings.OPENAI_MODEL,  # gpt-4o
+    )
 
-    if settings.MOUNT_MCP_SERVER:
-        # Mounted mode: Use direct function tools (no HTTP to avoid deadlock)
-        logger.info("🔧 Creating agent with direct function tools (mounted mode)")
-        from tools.server import add_task, list_tasks, complete_task, update_task, delete_task
-
-        # Wrap tools with user_id binding
-        @function_tool
-        def add_task_tool(title: str, description: str = None) -> dict:
-            """Create a new task for the user.
-
-            Args:
-                title: Task title (required, 1-200 characters)
-                description: Optional task description (max 1000 characters)
-
-            Returns:
-                Dict with status and task data
-            """
-            return add_task(user_id, title, description)
-
-        @function_tool
-        def list_tasks_tool(status: str = "all") -> dict:
-            """List user's tasks with optional status filter.
-
-            Args:
-                status: Filter by status - "all", "pending", or "completed" (default: "all")
-
-            Returns:
-                Dict with status and list of tasks
-            """
-            return list_tasks(user_id, status)
-
-        @function_tool
-        def complete_task_tool(task_id: str) -> dict:
-            """Mark a task as completed.
-
-            Args:
-                task_id: Task ID (UUID string)
-
-            Returns:
-                Dict with status and updated task data
-            """
-            return complete_task(user_id, task_id)
-
-        @function_tool
-        def update_task_tool(task_id: str, title: str = None, description: str = None) -> dict:
-            """Update a task's title and/or description.
-
-            Args:
-                task_id: Task ID (UUID string)
-                title: New task title (optional, 1-200 characters)
-                description: New task description (optional, max 1000 characters)
-
-            Returns:
-                Dict with status and updated task data
-            """
-            return update_task(user_id, task_id, title, description)
-
-        @function_tool
-        def delete_task_tool(task_id: str) -> dict:
-            """Delete a task.
-
-            Args:
-                task_id: Task ID (UUID string)
-
-            Returns:
-                Dict with status and deletion confirmation
-            """
-            return delete_task(user_id, task_id)
-
-        agent = Agent(
-            name="TaskAssistant",
-            instructions=instructions,
-            tools=[add_task_tool, list_tasks_tool, complete_task_tool, update_task_tool, delete_task_tool],
-            model=settings.OPENAI_MODEL,
-        )
-
-        return agent, None  # No server context needed
-
-    else:
-        # Separate mode: Use HTTP MCP connection
-        logger.info("🔧 Creating agent with MCP HTTP connection (separate mode)")
-        server = await get_mcp_server()
-        agent = Agent(
-            name="TaskAssistant",
-            instructions=instructions,
-            mcp_servers=[server],
-            model=settings.OPENAI_MODEL,
-        )
-
-        return agent, server
+    return agent, server
 
 
 async def process_message(
@@ -215,15 +133,14 @@ async def process_message(
     try:
         import time
 
-        # Create agent with task tools
+        # Create agent with MCP connection
         start_total = time.time()
         start_agent = time.time()
         agent, server = await create_task_agent(user_id)
         agent_creation_time = time.time() - start_agent
         logger.info(f"⏱️  Agent creation took {agent_creation_time:.2f}s")
 
-        # Handle both mounted and separate modes
-        async def _run_agent():
+        async with server:
             # Prepare messages for agent
             start_prep = time.time()
             messages = []
@@ -264,14 +181,6 @@ async def process_message(
                 "tokens_used": 0,  # TODO: Extract from result if available
             }
 
-        if server is None:
-            # Mounted mode: Direct function tools (no context manager)
-            return await _run_agent()
-        else:
-            # Separate mode: Use MCP server context manager
-            async with server:
-                return await _run_agent()
-
     except Exception as e:
         logger.error(f"Error processing message: {str(e)}", exc_info=True)
         return {
@@ -302,22 +211,16 @@ async def process_message_streaming(
     try:
         agent, server = await create_task_agent(user_id)
 
-        messages = []
-        if conversation_history:
-            messages.extend(conversation_history)
-        messages.append({"role": "user", "content": message})
+        async with server:
+            messages = []
+            if conversation_history:
+                messages.extend(conversation_history)
+            messages.append({"role": "user", "content": message})
 
-        if server is None:
-            # Mounted mode: Direct function tools (no context manager)
+            # Run agent with streaming
             result = Runner.run_streamed(agent, messages)
             async for event in result.stream_events():
                 yield event
-        else:
-            # Separate mode: Use MCP server context manager
-            async with server:
-                result = Runner.run_streamed(agent, messages)
-                async for event in result.stream_events():
-                    yield event
 
     except Exception as e:
         logger.error(f"Error in streaming: {str(e)}", exc_info=True)
