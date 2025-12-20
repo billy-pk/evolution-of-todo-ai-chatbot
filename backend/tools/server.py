@@ -31,19 +31,22 @@ from datetime import datetime, UTC
 
 
 # Configure transport security for production deployment
-# Allows requests from Render hostnames and localhost for development
+# NOTE: No wildcard domain support (*.onrender.com doesn't work)
+# Must list exact hostnames. Include both with and without port.
 transport_security = TransportSecuritySettings(
     enable_dns_rebinding_protection=True,
     allowed_hosts=[
-        "localhost:*",
-        "127.0.0.1:*",
-        "*.onrender.com:*",  # Allow all Render services
-        "evolution-todo-mcp-z5il.onrender.com:*",  # Specific MCP service
+        "localhost",  # Exact match for localhost (no port)
+        "localhost:*",  # localhost with any port
+        "127.0.0.1",  # Exact match for loopback (no port)
+        "127.0.0.1:*",  # loopback with any port
+        "evolution-todo-mcp-z5il.onrender.com",  # Exact match (HTTPS default port)
+        "evolution-todo-mcp-z5il.onrender.com:*",  # Match with explicit port
     ],
     allowed_origins=[
         "http://localhost:*",
         "https://localhost:*",
-        "https://*.onrender.com:*",
+        "https://evolution-todo-mcp-z5il.onrender.com",
     ],
 )
 
