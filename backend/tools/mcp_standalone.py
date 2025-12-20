@@ -37,7 +37,8 @@ def main():
     """Run the standalone MCP server."""
     import uvicorn
     from starlette.applications import Starlette
-    from starlette.routing import Mount
+    from starlette.routing import Mount, Route
+    from starlette.responses import JSONResponse
 
     port = int(os.environ.get("PORT", 8001))
     host = os.environ.get("HOST", "0.0.0.0")
@@ -49,8 +50,18 @@ def main():
     # Get the streamable HTTP ASGI app from FastMCP
     mcp_app = mcp.streamable_http_app()
 
-    # Mount at /mcp for consistency with main.py
+    # Health check endpoint at root
+    async def health_check(request):
+        return JSONResponse({
+            "status": "healthy",
+            "service": "MCP Server",
+            "endpoint": "/mcp",
+            "message": "MCP server is running. Use POST /mcp for MCP requests."
+        })
+
+    # Mount MCP at /mcp and health check at root
     app = Starlette(routes=[
+        Route("/", health_check),
         Mount("/mcp", app=mcp_app)
     ])
 
