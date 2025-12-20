@@ -46,16 +46,19 @@ async def get_mcp_server():
 
     async with _mcp_server_lock:
         if _mcp_server is None:
-            logger.info("🔌 Initializing MCP server connection (first time)")
+            mcp_url = settings.mcp_server_url
+            logger.info(f"🔌 Initializing MCP server connection (first time) to: {mcp_url}")
+            logger.info(f"   MOUNT_MCP_SERVER={settings.MOUNT_MCP_SERVER}, API_PORT={settings.API_PORT}")
             _mcp_server = MCPServerStreamableHttp(
                 name="Task MCP Server",
                 params={
-                    "url": settings.mcp_server_url,  # Auto-adjusted based on MOUNT_MCP_SERVER
+                    "url": mcp_url,
                     "timeout": settings.OPENAI_API_TIMEOUT,
                 },
                 cache_tools_list=True,
                 max_retry_attempts=3,
             )
+            logger.info("🔌 MCP server instance created")
         return _mcp_server
 
 
