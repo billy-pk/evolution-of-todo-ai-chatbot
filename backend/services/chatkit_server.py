@@ -169,7 +169,8 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
             error_item = AssistantMessageItem(
                 id=self.store.generate_item_id("message", thread, context),
                 thread_id=thread.id,
-                content=[{"type": "text", "text": "No message provided. Please send a message."}],
+                content=[{"type": "output_text", "text": "No message provided. Please send a message."}],
+                created_at=datetime.now(UTC),
             )
             yield ThreadItemDoneEvent(item=error_item)
             return
@@ -181,7 +182,8 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
             error_item = AssistantMessageItem(
                 id=self.store.generate_item_id("message", thread, context),
                 thread_id=thread.id,
-                content=[{"type": "text", "text": "Authentication error. Please sign in again."}],
+                content=[{"type": "output_text", "text": "Authentication error. Please sign in again."}],
+                created_at=datetime.now(UTC),
             )
             yield ThreadItemDoneEvent(item=error_item)
             return
@@ -204,7 +206,8 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
             error_item = AssistantMessageItem(
                 id=self.store.generate_item_id("message", thread, context),
                 thread_id=thread.id,
-                content=[{"type": "text", "text": "Could not process your message. Please try again."}],
+                content=[{"type": "output_text", "text": "Could not process your message. Please try again."}],
+                created_at=datetime.now(UTC),
             )
             yield ThreadItemDoneEvent(item=error_item)
             return
@@ -245,6 +248,7 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
             error_item = AssistantMessageItem(
                 id=self.store.generate_item_id("message", thread, context),
                 thread_id=thread.id,
-                content=[{"type": "text", "text": f"Sorry, I encountered an error: {str(e)}"}],
+                content=[{"type": "output_text", "text": f"Sorry, I encountered an error: {str(e)}"}],
+                created_at=datetime.now(UTC),
             )
             yield ThreadItemDoneEvent(item=error_item)
