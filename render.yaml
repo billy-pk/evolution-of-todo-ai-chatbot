@@ -26,12 +26,9 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: MCP_SERVER_URL
-        fromService:
-          type: web
-          name: evolution-todo-mcp
-          property: host
-          envVarKey: MCP_SERVICE_HOST
-        # Will be set to: https://evolution-todo-mcp.onrender.com/mcp
+        sync: false
+        # Set manually after MCP service is deployed
+        # Example: https://evolution-todo-mcp.onrender.com/mcp
 
   # Service 2: MCP Server (Standalone)
   - type: web
