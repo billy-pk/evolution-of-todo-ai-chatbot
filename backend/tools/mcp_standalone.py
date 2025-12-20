@@ -36,9 +36,11 @@ from tools.server import mcp
 def main():
     """Run the standalone MCP server."""
     import uvicorn
+    import contextlib
     from starlette.applications import Starlette
     from starlette.routing import Mount, Route
     from starlette.responses import JSONResponse
+    from typing import AsyncIterator
 
     port = int(os.environ.get("PORT", 8001))
     host = os.environ.get("HOST", "0.0.0.0")
@@ -59,11 +61,24 @@ def main():
             "message": "MCP server is running. Use POST /mcp for MCP requests."
         })
 
+    # Create lifespan context manager to initialize MCP session manager
+    @contextlib.asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncIterator[None]:
+        """Initialize MCP session manager on startup."""
+        logger.info("🔌 Initializing MCP session manager...")
+        async with mcp.session_manager.run():
+            logger.info("✅ MCP session manager initialized")
+            yield
+        logger.info("🔌 MCP session manager shutdown")
+
     # Mount MCP at /mcp and health check at root
-    app = Starlette(routes=[
-        Route("/", health_check),
-        Mount("/mcp", app=mcp_app)
-    ])
+    app = Starlette(
+        routes=[
+            Route("/", health_check),
+            Mount("/mcp", app=mcp_app)
+        ],
+        lifespan=lifespan
+    )
 
     # Run with uvicorn
     uvicorn.run(app, host=host, port=port)
