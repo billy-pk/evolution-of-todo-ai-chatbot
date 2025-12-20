@@ -20,8 +20,9 @@ from typing import List, Dict, Any
 import logging
 import os
 
-# Set OpenAI API key in environment for agents SDK
-os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
+# Set OpenAI API key in environment for agents SDK (if provided)
+if settings.OPENAI_API_KEY:
+    os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
 
 logger = logging.getLogger(__name__)
 

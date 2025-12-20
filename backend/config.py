@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
 
-    # Authentication
-    BETTER_AUTH_SECRET: str
+    # Authentication (optional for MCP-only deployment)
+    BETTER_AUTH_SECRET: str = ""
     BETTER_AUTH_URL: str = "http://localhost:3000"  # Better Auth frontend URL for JWKS
 
     # API Configuration
@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 5
     DB_POOL_MAX_OVERFLOW: int = 10
 
-    # OpenAI Configuration
-    OPENAI_API_KEY: str
+    # OpenAI Configuration (optional for MCP-only deployment)
+    OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
     OPENAI_API_TIMEOUT: int = 30
 
