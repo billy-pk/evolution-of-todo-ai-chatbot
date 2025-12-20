@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import { jwtClient } from "better-auth/client/plugins";
 
 /**
  * Better Auth client for React
@@ -7,6 +8,7 @@ import { createAuthClient } from "better-auth/react";
  * - Authentication methods (signUp, signIn, signOut)
  * - Session hooks (useSession)
  * - Reactive state management with nano-store
+ * - JWT token retrieval via jwtClient plugin
  */
 export const authClient = createAuthClient({
   /**
@@ -18,6 +20,13 @@ export const authClient = createAuthClient({
    */
   baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
     (typeof window !== 'undefined' ? window.location.origin : "http://localhost:3000"),
+  /**
+   * Plugins for extended functionality
+   * - jwtClient: Enables authClient.token() for JWT retrieval
+   */
+  plugins: [
+    jwtClient()
+  ],
 });
 
 /**
@@ -26,25 +35,21 @@ export const authClient = createAuthClient({
 export const { signIn, signUp, signOut, useSession } = authClient;
 
 /**
- * Fetch JWT token from Better Auth /api/auth/token endpoint
+ * Fetch JWT token using Better Auth jwtClient plugin
  *
- * This directly calls the token endpoint which requires an active session.
- * The session cookie is automatically included with credentials: 'include'.
+ * Uses authClient.token() which properly handles authentication
+ * and retrieves the JWT token for API requests.
  */
 export async function fetchJWTToken(): Promise<string | null> {
   try {
-    const response = await fetch('/api/auth/token', {
-      method: 'GET',
-      credentials: 'include', // Include session cookies
-    });
+    const { data, error } = await authClient.token();
 
-    if (!response.ok) {
-      console.error('Failed to fetch JWT token:', response.status, response.statusText);
+    if (error) {
+      console.error('Failed to fetch JWT token:', error);
       return null;
     }
 
-    const data = await response.json();
-    return data.token || null;
+    return data?.token || null;
   } catch (error) {
     console.error('Error fetching JWT token:', error);
     return null;
