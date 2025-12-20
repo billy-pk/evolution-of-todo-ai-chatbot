@@ -60,16 +60,16 @@ def main():
     mcp_app = mcp.streamable_http_app()
 
     # --- ADD HEALTH CHECK HERE ---
-    from fastapi.responses import JSONResponse
+    from starlette.responses import JSONResponse
+    from starlette.routing import Route
 
-    @mcp_app.head("/health")
-    @mcp_app.get("/health")
-    async def mcp_health():
-        """Health check for Render to keep the standalone MCP server alive."""
-        return JSONResponse(
-            content={"status": "healthy", "service": "mcp-standalone"},
-            status_code=200
-        )
+    # Define a simple function for the health check
+    async def health_check(request):
+        return JSONResponse({"status": "healthy", "service": "mcp-standalone"})
+
+    # Manually add the route to the Starlette app's router
+    # This handles both GET and HEAD automatically
+    mcp_app.routes.append(Route("/health", endpoint=health_check, methods=["GET", "HEAD"]))
 
     # Wrap with lifespan
     mcp_app.router.lifespan_context = lifespan_wrapper
