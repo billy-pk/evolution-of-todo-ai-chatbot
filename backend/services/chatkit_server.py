@@ -160,16 +160,30 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
         This is called whenever a user sends a message.
         Uses the existing MCP-connected agent for real task management.
         """
+        from chatkit.server import ThreadItemDoneEvent
+
         logger.info(f"TaskManagerChatKitServer.respond called for thread {thread.id}")
 
         if input is None:
             logger.warning("No input provided to respond")
+            error_item = AssistantMessageItem(
+                id=self.store.generate_item_id("message", thread, context),
+                thread_id=thread.id,
+                content=[{"type": "text", "text": "No message provided. Please send a message."}],
+            )
+            yield ThreadItemDoneEvent(item=error_item)
             return
 
         # Get user_id from context
         user_id = context.get("user_id")
         if not user_id:
             logger.error("No user_id in context")
+            error_item = AssistantMessageItem(
+                id=self.store.generate_item_id("message", thread, context),
+                thread_id=thread.id,
+                content=[{"type": "text", "text": "Authentication error. Please sign in again."}],
+            )
+            yield ThreadItemDoneEvent(item=error_item)
             return
 
         # Import the existing agent creation function
@@ -187,6 +201,12 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
 
         if not agent_input:
             logger.warning("Failed to convert input to agent format")
+            error_item = AssistantMessageItem(
+                id=self.store.generate_item_id("message", thread, context),
+                thread_id=thread.id,
+                content=[{"type": "text", "text": "Could not process your message. Please try again."}],
+            )
+            yield ThreadItemDoneEvent(item=error_item)
             return
 
         logger.info(f"Running MCP agent for user {user_id} with input: {agent_input}")
@@ -209,7 +229,6 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
         except Exception as e:
             logger.error(f"Error in respond: {str(e)}", exc_info=True)
             # Yield an error message to the user
-            from chatkit.server import ThreadItemDoneEvent
             error_item = AssistantMessageItem(
                 id=self.store.generate_item_id("message", thread, context),
                 thread_id=thread.id,

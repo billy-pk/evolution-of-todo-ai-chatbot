@@ -36,9 +36,10 @@ class Settings(BaseSettings):
     OPENAI_API_TIMEOUT: int = 30
 
     # MCP Server Configuration
-    # Set to True to mount MCP server on FastAPI (unified deployment for Render)
-    # Set to False to run MCP server separately on port 8001 (separate deployment for OCI)
-    MOUNT_MCP_SERVER: bool = False
+    # Set to True to mount MCP server on FastAPI (unified deployment for Render/Vercel)
+    # Set to False to run MCP server separately on port 8001 (local dev or separate services)
+    # Default: True (most cloud deployments use single service)
+    MOUNT_MCP_SERVER: bool = True
 
     # MCP server URL - automatically adjusted based on MOUNT_MCP_SERVER
     # When mounted: http://localhost:8000/mcp
