@@ -13,6 +13,7 @@ Architecture:
 """
 
 import sys
+import os
 from pathlib import Path
 
 # Add parent directory to path so we can import backend modules
@@ -29,11 +30,14 @@ from datetime import datetime, UTC
 
 
 # Initialize FastMCP server with stateless HTTP transport
+# Note: allowed_hosts=None disables Host header validation
+# This is safe because our MCP server is only accessed by our authenticated backend
 mcp = FastMCP(
     "TaskMCPServer",
     stateless_http=True,
     json_response=True,
-    streamable_http_path="/"  # Path where MCP will be accessible (will be mounted at /mcp)
+    streamable_http_path="/",  # Path where MCP will be accessible
+    allowed_hosts=None,  # Disable Host header check (safe - backend is authenticated)
 )
 
 
