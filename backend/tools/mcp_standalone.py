@@ -35,6 +35,10 @@ from tools.server import mcp
 
 def main():
     """Run the standalone MCP server."""
+    import uvicorn
+    from starlette.applications import Starlette
+    from starlette.routing import Mount
+
     port = int(os.environ.get("PORT", 8001))
     host = os.environ.get("HOST", "0.0.0.0")
 
@@ -42,13 +46,16 @@ def main():
     logger.info(f"   MCP endpoint will be at: http://{host}:{port}/mcp")
     logger.info(f"   Database: {os.environ.get('DATABASE_URL', 'Not set')[:50]}...")
 
-    # Run MCP server with streamable HTTP transport
-    # This starts a uvicorn server internally
-    mcp.run(
-        transport="streamable-http",
-        host=host,
-        port=port
-    )
+    # Get the streamable HTTP ASGI app from FastMCP
+    mcp_app = mcp.streamable_http_app()
+
+    # Mount at /mcp for consistency with main.py
+    app = Starlette(routes=[
+        Mount("/mcp", app=mcp_app)
+    ])
+
+    # Run with uvicorn
+    uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
     main()

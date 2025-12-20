@@ -45,5 +45,3 @@ services:
         value: 3.13.0
       - key: DATABASE_URL
         sync: false  # You'll set this in Render dashboard
-      - key: PORT
-        value: 8001
