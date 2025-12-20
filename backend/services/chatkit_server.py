@@ -212,17 +212,15 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
         logger.info(f"Running MCP agent for user {user_id} with input: {agent_input}")
 
         try:
-            # Create agent with MCP tools (connects to real PostgreSQL via MCP server)
+            # Create agent with task management tools
             logger.info("Creating task agent...")
             agent, mcp_server = await create_task_agent(user_id)
-            logger.info(f"Agent created successfully. MCP URL: {mcp_server}")
+            logger.info(f"Agent created successfully. Server: {mcp_server}")
 
-            logger.info("Entering MCP server context...")
-            async with mcp_server:
-                logger.info("MCP server context entered successfully")
-
-                # Run the agent with streaming
-                logger.info("Starting Runner.run_streamed...")
+            # Run agent with or without MCP server context
+            if mcp_server is None:
+                # Mounted mode: Direct function tools (no HTTP context manager needed)
+                logger.info("Running agent with direct function tools...")
                 result = Runner.run_streamed(
                     agent,
                     input=agent_input,
@@ -238,6 +236,29 @@ class TaskManagerChatKitServer(ChatKitServer[dict]):
                     yield event
 
                 logger.info(f"Finished streaming {event_count} events")
+            else:
+                # Separate mode: Use MCP server context manager
+                logger.info("Entering MCP server context...")
+                async with mcp_server:
+                    logger.info("MCP server context entered successfully")
+
+                    # Run the agent with streaming
+                    logger.info("Starting Runner.run_streamed...")
+                    result = Runner.run_streamed(
+                        agent,
+                        input=agent_input,
+                    )
+                    logger.info(f"Runner.run_streamed returned: {type(result)}")
+
+                    # Stream the agent response as ChatKit events
+                    logger.info("Starting to stream agent response...")
+                    event_count = 0
+                    async for event in stream_agent_response(agent_context, result):
+                        event_count += 1
+                        logger.info(f"Yielding event #{event_count}: {type(event)}")
+                        yield event
+
+                    logger.info(f"Finished streaming {event_count} events")
 
         except Exception as e:
             logger.error(f"Error in respond: {str(e)}", exc_info=True)
