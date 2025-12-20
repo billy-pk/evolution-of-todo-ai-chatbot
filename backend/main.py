@@ -17,33 +17,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-# Get MCP app if mounting (must happen before creating FastAPI app)
-# Following pattern from: https://github.com/modelcontextprotocol/python-sdk/pull/1712
-import contextlib
-from typing import AsyncIterator
-
-mcp_app = None
-mcp_lifespan = None
-
-if settings.MOUNT_MCP_SERVER:
-    try:
-        from tools.server import get_mcp_app, mcp as mcp_server
-
-        mcp_app = get_mcp_app()
-
-        # Create custom lifespan that runs MCP session manager
-        # FastAPI doesn't automatically trigger lifespan of mounted sub-apps
-        @contextlib.asynccontextmanager
-        async def mcp_lifespan(app: FastAPI) -> AsyncIterator[None]:
-            """FastAPI lifespan that initializes the MCP session manager."""
-            async with mcp_server.session_manager.run():
-                yield
-
-        logging.getLogger(__name__).info("✅ MCP app and lifespan created")
-    except Exception as e:
-        logging.getLogger(__name__).error(f"❌ Failed to create MCP app: {e}")
-        import traceback
-        traceback.print_exc()
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -55,8 +29,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Todo API",
         description="API for managing todo tasks with authentication",
-        version="1.0.0",
-        lifespan=mcp_lifespan  # Pass MCP lifespan to FastAPI
+        version="1.0.0"
     )
 
     # T020: Add CORS middleware
@@ -115,20 +88,6 @@ async def health_check_api():
     Does not require JWT authentication - defined before middleware is applied.
     """
     return await health_check()
-
-
-# Mount MCP server if MOUNT_MCP_SERVER is enabled (unified deployment mode)
-if settings.MOUNT_MCP_SERVER and mcp_app is not None:
-    try:
-        # Mount MCP app at /mcp following FastMCP + FastAPI pattern
-        app.mount("/mcp", mcp_app)
-        logging.getLogger(__name__).info("✅ MCP server mounted at /mcp (unified deployment mode)")
-    except Exception as e:
-        logging.getLogger(__name__).error(f"❌ Failed to mount MCP server: {e}")
-        import traceback
-        traceback.print_exc()
-elif not settings.MOUNT_MCP_SERVER:
-    logging.getLogger(__name__).info("ℹ️  MCP server not mounted - expecting separate service on port 8001")
 
 
 # T044: Include chat route (User Story 6 - Conversation History)

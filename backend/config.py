@@ -36,14 +36,9 @@ class Settings(BaseSettings):
     OPENAI_API_TIMEOUT: int = 30
 
     # MCP Server Configuration
-    # Set to True to mount MCP server on FastAPI (unified deployment - NOT RECOMMENDED due to deadlock)
-    # Set to False to run MCP server separately (RECOMMENDED for production)
-    # Default: False (separate service avoids HTTP deadlock)
-    MOUNT_MCP_SERVER: bool = False
-
-    # MCP server URL - automatically adjusted based on MOUNT_MCP_SERVER
-    # When mounted: http://localhost:8000/mcp
-    # When separate: http://localhost:8001/mcp
+    # MCP server URL - separate service deployment
+    # Production: https://evolution-todo-mcp.onrender.com
+    # Development: http://localhost:8001
     MCP_SERVER_URL: Optional[str] = None
 
     # Rate Limiting
@@ -52,7 +47,9 @@ class Settings(BaseSettings):
     @property
     def mcp_server_url(self) -> str:
         """
-        Get MCP server URL based on deployment mode.
+        Get MCP server URL.
+
+        Returns MCP_SERVER_URL if set, otherwise defaults to localhost:8001.
 
         Returns:
             str: MCP server URL
@@ -60,12 +57,8 @@ class Settings(BaseSettings):
         if self.MCP_SERVER_URL:
             return self.MCP_SERVER_URL
 
-        if self.MOUNT_MCP_SERVER:
-            # Unified mode: MCP mounted on FastAPI
-            return f"http://localhost:{self.API_PORT}/mcp"
-        else:
-            # Separate mode: MCP on port 8001 (serves at root)
-            return "http://localhost:8001"
+        # Default: Local MCP server on port 8001
+        return "http://localhost:8001"
 
 
 # Create a single instance of settings

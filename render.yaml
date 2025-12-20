@@ -15,8 +15,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.0
-      - key: MOUNT_MCP_SERVER
-        value: false
       - key: DATABASE_URL
         sync: false  # You'll set this in Render dashboard
       - key: BETTER_AUTH_SECRET
