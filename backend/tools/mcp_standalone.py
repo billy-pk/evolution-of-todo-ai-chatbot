@@ -62,26 +62,9 @@ def main():
     # Wrap with lifespan
     mcp_app.router.lifespan_context = lifespan_wrapper
 
-    # Add middleware to normalize Host header for MCP security validation
-    # MCP server checks Host header and only accepts localhost by default
-    # This middleware rewrites any Host header to localhost so production URLs work
-    class HostHeaderMiddleware:
-        def __init__(self, app):
-            self.app = app
-
-        async def __call__(self, scope, receive, send):
-            if scope["type"] == "http":
-                # Rewrite Host header to localhost to pass MCP security check
-                headers = dict(scope.get("headers", []))
-                headers[b"host"] = b"localhost"
-                scope["headers"] = list(headers.items())
-            await self.app(scope, receive, send)
-
-    # Wrap MCP app with Host header middleware
-    app = HostHeaderMiddleware(mcp_app)
-
     # Run with uvicorn - MCP serves at root path
-    uvicorn.run(app, host=host, port=port)
+    # Transport security is configured in tools/server.py with allowed_hosts
+    uvicorn.run(mcp_app, host=host, port=port)
 
 if __name__ == "__main__":
     main()

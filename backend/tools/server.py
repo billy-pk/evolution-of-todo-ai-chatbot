@@ -21,6 +21,7 @@ backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
 from mcp.server import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from models import Task
 from db import engine
 from sqlmodel import Session, select
@@ -29,12 +30,30 @@ from uuid import UUID
 from datetime import datetime, UTC
 
 
+# Configure transport security for production deployment
+# Allows requests from Render hostnames and localhost for development
+transport_security = TransportSecuritySettings(
+    enable_dns_rebinding_protection=True,
+    allowed_hosts=[
+        "localhost:*",
+        "127.0.0.1:*",
+        "*.onrender.com:*",  # Allow all Render services
+        "evolution-todo-mcp-z5il.onrender.com:*",  # Specific MCP service
+    ],
+    allowed_origins=[
+        "http://localhost:*",
+        "https://localhost:*",
+        "https://*.onrender.com:*",
+    ],
+)
+
 # Initialize FastMCP server with stateless HTTP transport
 mcp = FastMCP(
     "TaskMCPServer",
     stateless_http=True,
     json_response=True,
     streamable_http_path="/",  # Path where MCP will be accessible
+    transport_security=transport_security,
 )
 
 
