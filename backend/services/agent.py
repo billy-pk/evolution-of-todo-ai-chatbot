@@ -50,7 +50,6 @@ async def get_mcp_server():
         if _mcp_server is None:
             mcp_url = settings.mcp_server_url
             logger.info(f"🔌 Initializing MCP server connection (first time) to: {mcp_url}")
-            logger.info(f"   MOUNT_MCP_SERVER={settings.MOUNT_MCP_SERVER}, API_PORT={settings.API_PORT}")
             _mcp_server = MCPServerStreamableHttp(
                 name="Task MCP Server",
                 params={
