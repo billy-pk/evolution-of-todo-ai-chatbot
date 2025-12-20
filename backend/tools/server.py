@@ -33,20 +33,30 @@ from datetime import datetime, UTC
 # Configure transport security for production deployment
 # NOTE: No wildcard domain support (*.onrender.com doesn't work)
 # Must list exact hostnames. Include both with and without port.
+# Dynamically get hostname from Render's RENDER_EXTERNAL_HOSTNAME or use default
+RENDER_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "evolution-todo-mcp.onrender.com")
+
+allowed_hosts_list = [
+    "localhost",  # Exact match for localhost (no port)
+    "localhost:*",  # localhost with any port
+    "127.0.0.1",  # Exact match for loopback (no port)
+    "127.0.0.1:*",  # loopback with any port
+]
+
+# Add Render hostname if available (both with and without port)
+if RENDER_HOSTNAME:
+    allowed_hosts_list.extend([
+        RENDER_HOSTNAME,  # Exact match (HTTPS default port)
+        f"{RENDER_HOSTNAME}:*",  # Match with explicit port
+    ])
+
 transport_security = TransportSecuritySettings(
     enable_dns_rebinding_protection=True,
-    allowed_hosts=[
-        "localhost",  # Exact match for localhost (no port)
-        "localhost:*",  # localhost with any port
-        "127.0.0.1",  # Exact match for loopback (no port)
-        "127.0.0.1:*",  # loopback with any port
-        "evolution-todo-mcp-z5il.onrender.com",  # Exact match (HTTPS default port)
-        "evolution-todo-mcp-z5il.onrender.com:*",  # Match with explicit port
-    ],
+    allowed_hosts=allowed_hosts_list,
     allowed_origins=[
         "http://localhost:*",
         "https://localhost:*",
-        "https://evolution-todo-mcp-z5il.onrender.com",
+        f"https://{RENDER_HOSTNAME}" if RENDER_HOSTNAME else "",
     ],
 )
 
