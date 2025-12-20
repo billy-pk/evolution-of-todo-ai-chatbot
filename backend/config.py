@@ -64,8 +64,8 @@ class Settings(BaseSettings):
             # Unified mode: MCP mounted on FastAPI
             return f"http://localhost:{self.API_PORT}/mcp"
         else:
-            # Separate mode: MCP on port 8001
-            return "http://localhost:8001/mcp"
+            # Separate mode: MCP on port 8001 (serves at root)
+            return "http://localhost:8001"
 
 
 # Create a single instance of settings

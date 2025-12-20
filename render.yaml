@@ -28,7 +28,7 @@ services:
       - key: MCP_SERVER_URL
         sync: false
         # Set manually after MCP service is deployed
-        # Example: https://evolution-todo-mcp.onrender.com/mcp
+        # Example: https://evolution-todo-mcp.onrender.com
 
   # Service 2: MCP Server (Standalone)
   - type: web
