@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""
+Standalone MCP Server for Separate Deployment
+
+This script runs the MCP server as a standalone service for 2-service deployment.
+Use this when MOUNT_MCP_SERVER=false and MCP runs on a separate host.
+
+Usage:
+    python mcp_standalone.py
+
+Environment Variables:
+    PORT - Port to run on (default: 8001)
+    DATABASE_URL - PostgreSQL connection string
+"""
+
+import os
+import sys
+import logging
+from pathlib import Path
+
+# Add parent directory to path to import backend modules
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+
+# Import MCP server
+from tools.server import mcp
+
+def main():
+    """Run the standalone MCP server."""
+    port = int(os.environ.get("PORT", 8001))
+    host = os.environ.get("HOST", "0.0.0.0")
+
+    logger.info(f"🚀 Starting standalone MCP server on {host}:{port}")
+    logger.info(f"   MCP endpoint will be at: http://{host}:{port}/mcp")
+    logger.info(f"   Database: {os.environ.get('DATABASE_URL', 'Not set')[:50]}...")
+
+    # Run MCP server with streamable HTTP transport
+    # This starts a uvicorn server internally
+    mcp.run(
+        transport="streamable-http",
+        host=host,
+        port=port
+    )
+
+if __name__ == "__main__":
+    main()
