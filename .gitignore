@@ -1,5 +1,6 @@
 # AI-specific directories
-.claude/
+.claude/*
+!.claude/skills/
 .gemini/
 .qwen/
 
