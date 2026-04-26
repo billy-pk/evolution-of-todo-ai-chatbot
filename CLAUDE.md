@@ -27,8 +27,7 @@ source .venv/bin/activate  # Linux/Mac
 uvicorn main:app --reload --port 8000
 
 # Run MCP server (required for chat functionality)
-cd tools
-python server.py
+uv run tools/start_server_8001.py
 
 # Run tests
 pytest
@@ -254,7 +253,7 @@ This project uses Spec-Kit Plus for specification-driven development. Custom sla
 
 1. **Frontend** (port 3000): `cd frontend && npm run dev`
 2. **Backend** (port 8000): `cd backend && uvicorn main:app --reload`
-3. **MCP Server** (port 8001): `cd backend/tools && python server.py`
+3. **MCP Server** (port 8001): `cd backend && uv run tools/start_server_8001.py`
 
 When making changes that affect chat functionality, restart all three servers to ensure consistency.
 
