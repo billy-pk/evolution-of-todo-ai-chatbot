@@ -266,6 +266,14 @@ npm test -- chat          # Chat component tests
 - **Feature Specs**: [specs/003-remove-legacy-endpoints/](specs/003-remove-legacy-endpoints/)
 - **Development History**: [history/prompts/](history/prompts/)
 
+### 🚀 Deployment Guides
+
+- **Render Deployment** (Backend + MCP Server): [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md)
+- **Vercel Deployment** (Frontend): [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)
+- **Quick Deploy** (Step-by-step summary): [QUICK_DEPLOY.md](QUICK_DEPLOY.md)
+- **Deployment Troubleshooting**: [DEPLOYMENT_TROUBLESHOOTING.md](DEPLOYMENT_TROUBLESHOOTING.md)
+- **Backend Deployment Details**: [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md)
+
 ## 🎯 Phase 3 Principles
 
 Per [Constitution v2.0.0](.specify/memory/constitution.md):
