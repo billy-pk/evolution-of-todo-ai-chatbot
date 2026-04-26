@@ -2,14 +2,6 @@
 
 A full-stack todo application with **pure conversational interface** - all task management via natural language chat powered by OpenAI Agents SDK and MCP tools.
 
-## 🌐 Live Deployment
-
-| Service | URL |
-|---|---|
-| **Frontend** | https://evolution-of-todo-ai-chatbot-phase3.vercel.app |
-| **Backend API** | https://evolution-todo-backend.onrender.com |
-| **MCP Server** | https://evolution-todo-mcp.onrender.com |
-
 ## 🌟 Overview
 
 This is **Phase 3** of the Evolution of Todo project - a complete architectural transformation from traditional REST API + UI to a **conversational-first application**:
@@ -106,8 +98,6 @@ npm run dev
 - **Frontend**: http://localhost:3000
 - **Chat Interface**: http://localhost:3000/chat
 - **Backend API Docs**: http://localhost:8000/docs
-
-> **Production URLs**: See [Live Deployment](#-live-deployment) section above.
 
 ## 📁 Project Structure
 
