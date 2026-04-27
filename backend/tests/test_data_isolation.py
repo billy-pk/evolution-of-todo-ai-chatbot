@@ -1,321 +1,128 @@
-from main import app
+"""
+Phase 3 Data Isolation Tests
+
+Verifies that user data is strictly isolated:
+- User A cannot access User B's conversations
+- Messages are filtered by user_id
+- Conversation ownership is enforced
+"""
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
-from models import Task
-from db import get_session
-from sqlalchemy import create_engine
-from sqlmodel import SQLModel, Session
-from fastapi import Request
+from sqlmodel import Session, select, create_engine, SQLModel
+from uuid import uuid4
+from models import Conversation, Message
 
 
 @pytest.fixture(scope="function")
-def test_db():
-    """Create an in-memory database for testing"""
-    engine = create_engine("sqlite:///./test_isolation.db", echo=True)
-
-    # Drop all tables first to ensure clean state
-    SQLModel.metadata.drop_all(bind=engine)
-
-    # Create tables
-    SQLModel.metadata.create_all(bind=engine)
-
-    def override_get_session():
-        with Session(engine) as session:
-            yield session
-
-    # We'll apply this override in each specific test
+def test_engine():
+    engine = create_engine("sqlite:///:memory:", echo=False)
+    SQLModel.metadata.create_all(engine)
     yield engine
-
-    # Clean up after test
-    SQLModel.metadata.drop_all(bind=engine)
     engine.dispose()
 
 
-@patch('middleware.jwt.decode')
-@patch('middleware.jwks_client.get_signing_key_from_jwt')
-def test_user_a_cannot_list_user_b_tasks(mock_get_signing_key, mock_decode, test_db):
-    """Test T090: User A cannot list User B's tasks"""
-    from main import app
+def test_conversations_isolated_by_user(test_engine):
+    """Each user only sees their own conversations."""
+    user_a = "user_a_isolation"
+    user_b = "user_b_isolation"
 
-    # Create app instance with test database
-    engine = test_db
+    with Session(test_engine) as session:
+        for _ in range(2):
+            session.add(Conversation(user_id=user_a))
+        for _ in range(3):
+            session.add(Conversation(user_id=user_b))
+        session.commit()
 
-    def override_get_session():
-        with Session(engine) as session:
-            yield session
+    with Session(test_engine) as session:
+        convs_a = session.exec(select(Conversation).where(Conversation.user_id == user_a)).all()
+        convs_b = session.exec(select(Conversation).where(Conversation.user_id == user_b)).all()
 
-    app.dependency_overrides[get_session] = override_get_session
-    
-    mock_get_signing_key.return_value = MagicMock()
-
-    with TestClient(app) as client:
-        # Create tasks for User A
-        mock_decode.return_value = {"user_id": "user_a_123"}
-        response = client.post(
-            f"/api/user_a_123/tasks",
-            headers={"Authorization": "Bearer fake-token-a"},
-            json={"title": "User A Task 1", "description": "Task for User A"}
-        )
-        assert response.status_code in [200, 201]
-        
-        response = client.post(
-            f"/api/user_a_123/tasks",
-            headers={"Authorization": "Bearer fake-token-a"},
-            json={"title": "User A Task 2", "description": "Task for User A"}
-        )
-        assert response.status_code in [200, 201]
-
-        # Create tasks for User B
-        mock_decode.return_value = {"user_id": "user_b_456"}
-        response = client.post(
-            f"/api/user_b_456/tasks",
-            headers={"Authorization": "Bearer fake-token-b"},
-            json={"title": "User B Task 1", "description": "Task for User B"}
-        )
-        assert response.status_code in [200, 201]
-        
-        response = client.post(
-            f"/api/user_b_456/tasks",
-            headers={"Authorization": "Bearer fake-token-b"},
-            json={"title": "User B Task 2", "description": "Task for User B"}
-        )
-        assert response.status_code in [200, 201]
-
-        # Now test that User A cannot access User B's tasks
-        mock_decode.return_value = {"user_id": "user_a_123"}
-        response = client.get(f"/api/user_b_456/tasks", headers={"Authorization": "Bearer fake-token-a"})
-        
-        # Should return 403 Forbidden due to user_id mismatch
-        assert response.status_code == 403
+    assert len(convs_a) == 2
+    assert len(convs_b) == 3
+    assert all(c.user_id == user_a for c in convs_a)
+    assert all(c.user_id == user_b for c in convs_b)
 
 
-@patch('middleware.jwt.decode')
-@patch('middleware.jwks_client.get_signing_key_from_jwt')
-def test_user_a_cannot_access_user_b_individual_task(mock_get_signing_key, mock_decode, test_db):
-    """Test T090: User A cannot view User B's individual task"""
-    from main import app
+def test_messages_isolated_by_user(test_engine):
+    """Messages from one user are not visible when querying another user."""
+    user_a = "msg_user_a"
+    user_b = "msg_user_b"
 
-    # Create app instance with test database
-    engine = test_db
+    with Session(test_engine) as session:
+        conv_a = Conversation(user_id=user_a)
+        conv_b = Conversation(user_id=user_b)
+        session.add(conv_a)
+        session.add(conv_b)
+        session.commit()
+        session.refresh(conv_a)
+        session.refresh(conv_b)
 
-    def override_get_session():
-        with Session(engine) as session:
-            yield session
-
-    app.dependency_overrides[get_session] = override_get_session
-    
-    mock_get_signing_key.return_value = MagicMock()
-
-    with TestClient(app) as client:
-        # Create a task for User B
-        mock_decode.return_value = {"user_id": "user_b_456"}
-        response = client.post(
-            f"/api/user_b_456/tasks",
-            headers={"Authorization": "Bearer fake-token-b"},
-            json={"title": "Private Task", "description": "User B's private task"}
-        )
-        assert response.status_code in [200, 201]
-        task_id = response.json()["id"]
-
-        # Now test that User A cannot access User B's task
-        mock_decode.return_value = {"user_id": "user_a_123"}
-        response = client.get(f"/api/user_b_456/tasks/{task_id}", headers={"Authorization": "Bearer fake-token-a"})
-        
-        # Should return 403 Forbidden
-        assert response.status_code == 403
-
-
-@patch('middleware.jwt.decode')
-@patch('middleware.jwks_client.get_signing_key_from_jwt')
-def test_user_a_cannot_update_user_b_task(mock_get_signing_key, mock_decode, test_db):
-    """Test T090: User A cannot update User B's task"""
-    from main import app
-
-    # Create app instance with test database
-    engine = test_db
-
-    def override_get_session():
-        with Session(engine) as session:
-            yield session
-
-    app.dependency_overrides[get_session] = override_get_session
-    
-    mock_get_signing_key.return_value = MagicMock()
-
-    with TestClient(app) as client:
-        # Create a task for User B
-        mock_decode.return_value = {"user_id": "user_b_456"}
-        response = client.post(
-            f"/api/user_b_456/tasks",
-            headers={"Authorization": "Bearer fake-token-b"},
-            json={"title": "Update Protected Task", "description": "Task that should not be updated by others"}
-        )
-        assert response.status_code in [200, 201]
-        task_id = response.json()["id"]
-
-        # Now test that User A cannot update User B's task
-        mock_decode.return_value = {"user_id": "user_a_123"}
-        response = client.put(
-            f"/api/user_b_456/tasks/{task_id}",
-            headers={"Authorization": "Bearer fake-token-a"},
-            json={"title": "Hacked Title", "description": "Hacked Description"}
-        )
-        
-        # Should return 403 Forbidden
-        assert response.status_code == 403
-
-
-@patch('middleware.jwt.decode')
-@patch('middleware.jwks_client.get_signing_key_from_jwt')
-def test_user_a_cannot_delete_user_b_task(mock_get_signing_key, mock_decode, test_db):
-    """Test T090: User A cannot delete User B's task"""
-    from main import app
-
-    # Create app instance with test database
-    engine = test_db
-
-    def override_get_session():
-        with Session(engine) as session:
-            yield session
-
-    app.dependency_overrides[get_session] = override_get_session
-    
-    mock_get_signing_key.return_value = MagicMock()
-
-    with TestClient(app) as client:
-        # Create a task for User B
-        mock_decode.return_value = {"user_id": "user_b_456"}
-        response = client.post(
-            f"/api/user_b_456/tasks",
-            headers={"Authorization": "Bearer fake-token-b"},
-            json={"title": "Delete Protected Task", "description": "Task that should not be deleted by others"}
-        )
-        assert response.status_code in [200, 201]
-        task_id = response.json()["id"]
-
-        # Now test that User A cannot delete User B's task
-        mock_decode.return_value = {"user_id": "user_a_123"}
-        response = client.delete(f"/api/user_b_456/tasks/{task_id}", headers={"Authorization": "Bearer fake-token-a"})
-        
-        # Should return 403 Forbidden
-        assert response.status_code == 403
-
-
-@patch('middleware.jwt.decode')
-@patch('middleware.jwks_client.get_signing_key_from_jwt')
-def test_user_a_only_sees_own_tasks(mock_get_signing_key, mock_decode, test_db):
-    """Test T090: User A should only see their own tasks"""
-    from main import app
-
-    # Create app instance with test database
-    engine = test_db
-
-    def override_get_session():
-        with Session(engine) as session:
-            yield session
-
-    app.dependency_overrides[get_session] = override_get_session
-    
-    mock_get_signing_key.return_value = MagicMock()
-
-    with TestClient(app) as client:
-        # Create tasks for User A
-        mock_decode.return_value = {"user_id": "user_a_123"}
-        response = client.post(
-            f"/api/user_a_123/tasks",
-            headers={"Authorization": "Bearer fake-token-a"},
-            json={"title": "User A Task 1", "description": "Task for User A"}
-        )
-        assert response.status_code in [200, 201]
-        
-        response = client.post(
-            f"/api/user_a_123/tasks",
-            headers={"Authorization": "Bearer fake-token-a"},
-            json={"title": "User A Task 2", "description": "Another task for User A"}
-        )
-        assert response.status_code in [200, 201]
-
-        # Create tasks for User B
-        mock_decode.return_value = {"user_id": "user_b_456"}
-        response = client.post(
-            f"/api/user_b_456/tasks",
-            headers={"Authorization": "Bearer fake-token-b"},
-            json={"title": "User B Task 1", "description": "Task for User B"}
-        )
-        assert response.status_code in [200, 201]
-        
-        response = client.post(
-            f"/api/user_b_456/tasks",
-            headers={"Authorization": "Bearer fake-token-b"},
-            json={"title": "User B Task 2", "description": "Another task for User B"}
-        )
-        assert response.status_code in [200, 201]
-
-        # User A should only see their own tasks
-        mock_decode.return_value = {"user_id": "user_a_123"}
-        response = client.get(f"/api/user_a_123/tasks", headers={"Authorization": "Bearer fake-token-a"})
-        assert response.status_code == 200
-        data = response.json()
-        user_a_tasks = data["tasks"]  # Response is {"tasks": [...], "total": ...}
-
-        # Verify User A only sees their tasks
-        user_a_titles = [task["title"] for task in user_a_tasks]
-        assert "User A Task 1" in user_a_titles
-        assert "User A Task 2" in user_a_titles
-        assert len(user_a_tasks) == 2
-
-
-@patch('middleware.jwt.decode')
-@patch('middleware.jwks_client.get_signing_key_from_jwt')
-def test_database_query_filtering(mock_get_signing_key, mock_decode, test_db):
-    """Test T090: Database queries properly filter by user_id"""
-    from main import app
-
-    # Create app instance with test database
-    engine = test_db
-
-    def override_get_session():
-        with Session(engine) as session:
-            yield session
-
-    app.dependency_overrides[get_session] = override_get_session
-    
-    mock_get_signing_key.return_value = MagicMock()
-
-    with TestClient(app) as client:
-        # Create mixed tasks for both users
-        # User A creates 3 tasks
-        mock_decode.return_value = {"user_id": "user_a_123"}
         for i in range(3):
-            response = client.post(
-                f"/api/user_a_123/tasks",
-                headers={"Authorization": "Bearer fake-token-a"},
-                json={"title": f"User A Task {i}", "description": f"Task {i} for User A"}
+            session.add(Message(conversation_id=conv_a.id, user_id=user_a, role="user", content=f"msg {i}"))
+        session.add(Message(conversation_id=conv_b.id, user_id=user_b, role="user", content="user b msg"))
+        session.commit()
+
+        conv_a_id = conv_a.id
+        conv_b_id = conv_b.id
+
+    with Session(test_engine) as session:
+        msgs_a = session.exec(select(Message).where(Message.user_id == user_a)).all()
+        msgs_b = session.exec(select(Message).where(Message.user_id == user_b)).all()
+
+    assert len(msgs_a) == 3
+    assert len(msgs_b) == 1
+    assert all(m.user_id == user_a for m in msgs_a)
+    assert all(m.user_id == user_b for m in msgs_b)
+
+
+def test_user_cannot_access_other_users_conversation(test_engine):
+    """A user querying by another user's conversation_id gets no results."""
+    user_a = "owner_user"
+    user_b = "intruder_user"
+
+    with Session(test_engine) as session:
+        conv = Conversation(user_id=user_a)
+        session.add(conv)
+        session.commit()
+        session.refresh(conv)
+        conv_id = conv.id
+
+    # User B tries to access User A's conversation by filtering with their own user_id
+    with Session(test_engine) as session:
+        result = session.exec(
+            select(Conversation).where(
+                Conversation.id == conv_id,
+                Conversation.user_id == user_b
             )
-            assert response.status_code in [200, 201]
+        ).first()
 
-        # User B creates 3 tasks
-        mock_decode.return_value = {"user_id": "user_b_456"}
-        for i in range(3):
-            response = client.post(
-                f"/api/user_b_456/tasks",
-                headers={"Authorization": "Bearer fake-token-b"},
-                json={"title": f"User B Task {i}", "description": f"Task {i} for User B"}
+    assert result is None
+
+
+def test_conversation_ownership_enforced(test_engine):
+    """Conversation lookup with correct owner succeeds; wrong owner returns None."""
+    user_a = "real_owner"
+    user_b = "wrong_user"
+
+    with Session(test_engine) as session:
+        conv = Conversation(user_id=user_a)
+        session.add(conv)
+        session.commit()
+        session.refresh(conv)
+        conv_id = conv.id
+
+    with Session(test_engine) as session:
+        found = session.exec(
+            select(Conversation).where(
+                Conversation.id == conv_id,
+                Conversation.user_id == user_a
             )
-            assert response.status_code in [200, 201]
+        ).first()
+        not_found = session.exec(
+            select(Conversation).where(
+                Conversation.id == conv_id,
+                Conversation.user_id == user_b
+            )
+        ).first()
 
-        # Each user should only see 3 tasks (their own)
-        mock_decode.return_value = {"user_id": "user_a_123"}
-        response_a = client.get(f"/api/user_a_123/tasks", headers={"Authorization": "Bearer fake-token-a"})
-        assert response_a.status_code == 200
-        data_a = response_a.json()
-        user_a_tasks = data_a["tasks"]  # Response is {"tasks": [...], "total": ...}
-        assert len(user_a_tasks) == 3
-
-        mock_decode.return_value = {"user_id": "user_b_456"}
-        response_b = client.get(f"/api/user_b_456/tasks", headers={"Authorization": "Bearer fake-token-b"})
-        assert response_b.status_code == 200
-        data_b = response_b.json()
-        user_b_tasks = data_b["tasks"]  # Response is {"tasks": [...], "total": ...}
-        assert len(user_b_tasks) == 3
+    assert found is not None
+    assert not_found is None

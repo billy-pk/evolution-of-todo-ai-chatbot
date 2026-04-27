@@ -235,5 +235,5 @@ pytest tests/test_tools.py
 
 **Rate Limiting (HTTP 429)**:
 - Chat endpoints are limited to 50 requests/hour per authenticated user
-- Limit is keyed by `user_id` from JWT; falls back to IP for unauthenticated requests
+- Limit is keyed by `user_id` from JWT (login required to use chat)
 - Adjust via `RATE_LIMIT_REQUESTS_PER_HOUR` in `.env` (default: 50)

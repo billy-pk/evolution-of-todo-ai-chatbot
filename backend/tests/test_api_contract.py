@@ -1,34 +1,55 @@
 """
-API Contract Tests
-Testing the API endpoints to ensure they follow the OpenAPI specification
+Phase 3 API Contract Tests
+
+Verifies that the Phase 3 API endpoints follow the expected contract:
+- Health endpoint structure
+- Chat endpoint requires authentication
+- Correct HTTP status codes
 """
 import pytest
 from fastapi.testclient import TestClient
-from main import create_app
-from routes import tasks
+from main import app
 
 
-def test_openapi_spec():
-    """Test that OpenAPI spec is available"""
-    # Create app for testing
-    app = create_app()
-    # Include the tasks router without the JWT dependency for testing
-    app.include_router(
-        tasks.router,
-        prefix="/api",
-        # Don't add the JWT dependency for tests
+@pytest.fixture
+def app_client():
+    with TestClient(app) as c:
+        yield c
+
+
+def test_health_endpoint_returns_200(app_client):
+    response = app_client.get("/health")
+    assert response.status_code == 200
+
+
+def test_health_endpoint_structure(app_client):
+    response = app_client.get("/health")
+    data = response.json()
+    assert "status" in data
+    assert "database" in data
+    assert data["status"] in ["healthy", "unhealthy"]
+
+
+def test_api_health_endpoint_returns_200(app_client):
+    response = app_client.get("/api/health")
+    assert response.status_code == 200
+
+
+def test_chat_endpoint_requires_auth(app_client):
+    """Chat endpoint must return 401 without a JWT token."""
+    response = app_client.post(
+        "/api/test_user/chat",
+        json={"message": "hello"}
     )
-    
-    with TestClient(app) as client:
-        response = client.get("/openapi.json")
-        assert response.status_code == 200
-        
-        spec = response.json()
-        assert "openapi" in spec
-        assert "info" in spec
-        assert "paths" in spec
-        
-        # Check that task-related paths exist
-        assert "/api/{user_id}/tasks" in spec["paths"]
-        assert "/api/{user_id}/tasks/{task_id}" in spec["paths"]
-        assert "/api/{user_id}/tasks/{task_id}/complete" in spec["paths"]
+    assert response.status_code == 401
+
+
+def test_chatkit_endpoint_requires_auth(app_client):
+    """ChatKit endpoint must return 401 without a JWT token."""
+    response = app_client.post("/chatkit", json={})
+    assert response.status_code == 401
+
+
+def test_unknown_endpoint_returns_404(app_client):
+    response = app_client.get("/api/nonexistent")
+    assert response.status_code == 404

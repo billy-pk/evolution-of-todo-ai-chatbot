@@ -76,6 +76,24 @@ def db_session():
     session.close()
 
 
+@pytest.fixture(autouse=True)
+def mock_better_auth_verify(monkeypatch):
+    """
+    Patch verify_token in chatkit routes to accept HS256 test tokens,
+    bypassing the JWKS endpoint (which requires the frontend to be running).
+    """
+    def fake_verify(token: str):
+        try:
+            payload = jwt.decode(
+                token, settings.BETTER_AUTH_SECRET, algorithms=["HS256"]
+            )
+            return payload.get("user_id") or payload.get("sub")
+        except Exception:
+            return None
+
+    monkeypatch.setattr("routes.chatkit.verify_token", fake_verify)
+
+
 # ============================================================================
 # Session Endpoint Tests
 # ============================================================================

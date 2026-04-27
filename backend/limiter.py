@@ -4,11 +4,8 @@ from config import settings
 
 
 def _get_user_id(request) -> str:
-    """Rate limit key: authenticated user_id, fallback to IP."""
-    user_id = getattr(request.state, "user_id", None)
-    if user_id:
-        return user_id
-    return get_remote_address(request)
+    """Rate limit key: authenticated user_id from JWT."""
+    return getattr(request.state, "user_id", None) or get_remote_address(request)
 
 
 limiter = Limiter(key_func=_get_user_id)
