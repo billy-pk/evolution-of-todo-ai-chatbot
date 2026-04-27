@@ -54,7 +54,7 @@ async def get_mcp_server():
                 name="Task MCP Server",
                 params={
                     "url": mcp_url,
-                    "timeout": settings.OPENAI_API_TIMEOUT,
+                    "timeout": settings.MCP_CONNECT_TIMEOUT,
                 },
                 cache_tools_list=True,
                 max_retry_attempts=3,

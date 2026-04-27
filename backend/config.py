@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
     OPENAI_API_TIMEOUT: int = 30
+    MCP_CONNECT_TIMEOUT: int = 60  # Allow Render free tier cold start (30-60s)
 
     # MCP Server Configuration
     # MCP server URL - separate service deployment
