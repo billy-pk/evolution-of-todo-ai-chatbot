@@ -232,3 +232,8 @@ pytest tests/test_tools.py
 - Verify `DATABASE_URL` is correct
 - Check Neon database is active
 - Run migrations if tables don't exist
+
+**Rate Limiting (HTTP 429)**:
+- Chat endpoints are limited to 50 requests/hour per authenticated user
+- Limit is keyed by `user_id` from JWT; falls back to IP for unauthenticated requests
+- Adjust via `RATE_LIMIT_REQUESTS_PER_HOUR` in `.env` (default: 50)

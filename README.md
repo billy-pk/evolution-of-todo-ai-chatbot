@@ -233,6 +233,7 @@ All tools enforce user isolation and return structured JSON responses.
 - **User Isolation**: All database queries filtered by authenticated `user_id`
 - **No Token in URL**: User ID in path, not in query parameters
 - **Path-Token Matching**: Middleware verifies path `user_id` matches JWT claim
+- **Rate Limiting**: Chat endpoints limited to 50 requests/hour per user (HTTP 429 on breach)
 
 ## 🧪 Testing
 
@@ -346,6 +347,11 @@ npm run format    # Prettier
 - Verify `DATABASE_URL` is correct in both `.env` files
 - Check Neon database is active
 - Run migrations: `python backend/scripts/migrate.py`
+
+**Getting HTTP 429 (Too Many Requests)?**
+- Chat is rate-limited to 50 requests/hour per user
+- Wait until the next hour window resets
+- Adjust `RATE_LIMIT_REQUESTS_PER_HOUR` in backend `.env` to change the limit
 
 ## 📝 License
 

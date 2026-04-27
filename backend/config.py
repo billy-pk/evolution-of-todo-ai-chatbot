@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     MCP_SERVER_URL: Optional[str] = None
 
     # Rate Limiting
-    RATE_LIMIT_REQUESTS_PER_HOUR: int = 100
+    RATE_LIMIT_REQUESTS_PER_HOUR: int = 50
 
     @property
     def mcp_server_url(self) -> str:
