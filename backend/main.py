@@ -7,8 +7,12 @@ T035: Apply JWT middleware to all /api routes
 
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from config import settings
 from middleware import JWTBearer
+from limiter import limiter
 import logging
 
 # Configure logging to show INFO level messages
@@ -31,6 +35,10 @@ def create_app() -> FastAPI:
         description="API for managing todo tasks with authentication",
         version="1.0.0"
     )
+
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
 
     # T020: Add CORS middleware
     # Note: Cannot use allow_origins=["*"] with allow_credentials=True

@@ -18,6 +18,7 @@ from sqlmodel import Session, select
 from datetime import datetime, UTC, timedelta
 import json
 import logging
+from limiter import limiter, CHAT_RATE_LIMIT
 import jwt
 from typing import Optional, AsyncIterator
 import asyncio
@@ -546,6 +547,7 @@ async def add_message(
 # ============================================================================
 
 @chatkit_router.post("/chatkit")
+@limiter.limit(CHAT_RATE_LIMIT)
 async def chatkit_endpoint(request: Request):
     """
     Main ChatKit protocol endpoint.

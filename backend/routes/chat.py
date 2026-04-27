@@ -21,6 +21,7 @@ from schemas import ChatRequest, ChatResponse
 from models import Conversation, Message
 from services.agent import process_message
 from middleware import JWTBearer
+from limiter import limiter, CHAT_RATE_LIMIT
 import logging
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,9 @@ async def verify_user_access(request: Request, user_id: str) -> str:
 
 
 @router.post("/{user_id}/chat", response_model=ChatResponse, dependencies=[Depends(JWTBearer())])
+@limiter.limit(CHAT_RATE_LIMIT)
 async def chat(
+    request: Request,
     user_id: str,
     chat_request: ChatRequest,
     session: Session = Depends(get_session),
