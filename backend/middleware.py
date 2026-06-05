@@ -9,12 +9,9 @@ T034: Extract user_id from JWT payload
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
-import logging
 from jwt import PyJWKClient
 from config import settings
 from typing import Optional
-
-logger = logging.getLogger(__name__)
 
 
 class JWTBearer(HTTPBearer):
@@ -82,6 +79,8 @@ def verify_token(token: str) -> Optional[str]:
         user_id if token is valid, None otherwise
     """
     try:
+        print(f"=== DEBUG BACKEND: Received token (first 50 chars): {token[:50]}")
+
         # T032: Get the signing key from JWKS
         # The PyJWKClient fetches the public key from Better Auth's JWKS endpoint
         signing_key = jwks_client.get_signing_key_from_jwt(token)
@@ -97,17 +96,21 @@ def verify_token(token: str) -> Optional[str]:
             }
         )
 
+        print(f"=== DEBUG BACKEND: Decoded payload: {payload}")
+
         # T034: Extract user_id from the payload
         # Better Auth uses 'id' or 'sub' field, so check both
         user_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
 
         if not user_id:
-            logger.warning("JWT missing user_id/id/sub claim")
+            # Token must contain user_id, id, or sub
+            print(f"=== DEBUG BACKEND: Token missing user_id/id/sub. Payload keys: {payload.keys()}")
             return None
 
+        print(f"=== DEBUG BACKEND: Successfully validated token for user_id: {user_id}")
         return user_id
 
     except Exception as e:
         # Token signature invalid, expired, or malformed
-        logger.debug("JWT validation failed: %s", type(e).__name__)
+        print(f"=== DEBUG BACKEND: JWT validation error: {e}")
         return None
