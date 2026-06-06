@@ -392,7 +392,7 @@ def test_complete_task_unauthorized(session):
 
     # Assert
     assert result["status"] == "error"
-    assert "unauthorized" in result["error"].lower() or "does not belong" in result["error"].lower()
+    assert "task not found" in result["error"].lower()
 
     # Verify task is still pending
     statement = select(Task).where(Task.id == UUID(task_id))
@@ -526,7 +526,7 @@ def test_update_task_unauthorized(session):
 
     # Assert
     assert result["status"] == "error"
-    assert "unauthorized" in result["error"].lower() or "does not belong" in result["error"].lower()
+    assert "task not found" in result["error"].lower()
 
     # Verify task is unchanged
     statement = select(Task).where(Task.id == UUID(task_id))
@@ -600,7 +600,7 @@ def test_delete_task_unauthorized(session):
 
     # Assert
     assert result["status"] == "error"
-    assert "unauthorized" in result["error"].lower() or "does not belong" in result["error"].lower()
+    assert "task not found" in result["error"].lower()
 
     # Verify task still exists
     statement = select(Task).where(Task.id == UUID(task_id))

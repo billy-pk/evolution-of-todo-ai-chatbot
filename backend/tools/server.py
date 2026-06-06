@@ -321,24 +321,12 @@ def complete_task(user_id: str, task_id: str, _session: Session = None) -> dict:
     try:
         # Use provided session or create new one
         if _session:
-            # Find task
-            statement = select(Task).where(Task.id == task_uuid)
+            statement = select(Task).where(Task.id == task_uuid, Task.user_id == user_id)
             task = _session.exec(statement).first()
 
             if not task:
-                return {
-                    "status": "error",
-                    "error": "Task not found"
-                }
+                return {"status": "error", "error": "Task not found"}
 
-            # Verify ownership
-            if task.user_id != user_id:
-                return {
-                    "status": "error",
-                    "error": "Unauthorized: Task does not belong to user"
-                }
-
-            # Mark as completed
             task.completed = True
             task.updated_at = datetime.now(UTC)
             _session.add(task)
@@ -356,24 +344,12 @@ def complete_task(user_id: str, task_id: str, _session: Session = None) -> dict:
             }
         else:
             with Session(engine) as session:
-                # Find task
-                statement = select(Task).where(Task.id == task_uuid)
+                statement = select(Task).where(Task.id == task_uuid, Task.user_id == user_id)
                 task = session.exec(statement).first()
 
                 if not task:
-                    return {
-                        "status": "error",
-                        "error": "Task not found"
-                    }
+                    return {"status": "error", "error": "Task not found"}
 
-                # Verify ownership
-                if task.user_id != user_id:
-                    return {
-                        "status": "error",
-                        "error": "Unauthorized: Task does not belong to user"
-                    }
-
-                # Mark as completed
                 task.completed = True
                 task.updated_at = datetime.now(UTC)
                 session.add(task)
@@ -445,24 +421,12 @@ def update_task(user_id: str, task_id: str, title: str = None, description: str 
     try:
         # Use provided session or create new one
         if _session:
-            # Find task
-            statement = select(Task).where(Task.id == task_uuid)
+            statement = select(Task).where(Task.id == task_uuid, Task.user_id == user_id)
             task = _session.exec(statement).first()
 
             if not task:
-                return {
-                    "status": "error",
-                    "error": "Task not found"
-                }
+                return {"status": "error", "error": "Task not found"}
 
-            # Verify ownership
-            if task.user_id != user_id:
-                return {
-                    "status": "error",
-                    "error": "Unauthorized: Task does not belong to user"
-                }
-
-            # Update fields
             if title:
                 task.title = title.strip()
             if description is not None:
@@ -485,24 +449,12 @@ def update_task(user_id: str, task_id: str, title: str = None, description: str 
             }
         else:
             with Session(engine) as session:
-                # Find task
-                statement = select(Task).where(Task.id == task_uuid)
+                statement = select(Task).where(Task.id == task_uuid, Task.user_id == user_id)
                 task = session.exec(statement).first()
 
                 if not task:
-                    return {
-                        "status": "error",
-                        "error": "Task not found"
-                    }
+                    return {"status": "error", "error": "Task not found"}
 
-                # Verify ownership
-                if task.user_id != user_id:
-                    return {
-                        "status": "error",
-                        "error": "Unauthorized: Task does not belong to user"
-                    }
-
-                # Update fields
                 if title:
                     task.title = title.strip()
                 if description is not None:
@@ -559,63 +511,33 @@ def delete_task(user_id: str, task_id: str, _session: Session = None) -> dict:
     try:
         # Use provided session or create new one
         if _session:
-            # Find task
-            statement = select(Task).where(Task.id == task_uuid)
+            statement = select(Task).where(Task.id == task_uuid, Task.user_id == user_id)
             task = _session.exec(statement).first()
 
             if not task:
-                return {
-                    "status": "error",
-                    "error": "Task not found"
-                }
+                return {"status": "error", "error": "Task not found"}
 
-            # Verify ownership
-            if task.user_id != user_id:
-                return {
-                    "status": "error",
-                    "error": "Unauthorized: Task does not belong to user"
-                }
-
-            # Delete task
             _session.delete(task)
             _session.commit()
 
             return {
                 "status": "success",
-                "data": {
-                    "task_id": str(task_uuid),
-                    "deleted": True
-                }
+                "data": {"task_id": str(task_uuid), "deleted": True}
             }
         else:
             with Session(engine) as session:
-                # Find task
-                statement = select(Task).where(Task.id == task_uuid)
+                statement = select(Task).where(Task.id == task_uuid, Task.user_id == user_id)
                 task = session.exec(statement).first()
 
                 if not task:
-                    return {
-                        "status": "error",
-                        "error": "Task not found"
-                    }
+                    return {"status": "error", "error": "Task not found"}
 
-                # Verify ownership
-                if task.user_id != user_id:
-                    return {
-                        "status": "error",
-                        "error": "Unauthorized: Task does not belong to user"
-                    }
-
-                # Delete task
                 session.delete(task)
                 session.commit()
 
                 return {
                     "status": "success",
-                    "data": {
-                        "task_id": str(task_uuid),
-                        "deleted": True
-                    }
+                    "data": {"task_id": str(task_uuid), "deleted": True}
                 }
     except Exception as e:
         return {
